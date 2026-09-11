@@ -359,7 +359,9 @@
       v = el('button', 'pval toggle' + (r.get() ? '' : ' off'), r.get() ? 'ON' : 'OFF');
       v.onclick = function () { r.set(!r.get()); render(); };
     } else if (r.type === 'enum') {
-      v = el('button', 'pval enum', r.get());
+      // short values sit centred; only long ones need left alignment to fit
+      var txt = String(r.get());
+      v = el('button', 'pval' + (txt.length > 6 ? ' enum' : ''), txt);
       v.onclick = function () { r.next(); render(); };
     } else if (r.type === 'ro') {
       v = el('div', 'pval', String(r.get()));
@@ -454,9 +456,15 @@
     var main = $('calMain');
     main.innerHTML = '';
 
+    if (view.calTab === 2) {
+      main.appendChild(el('div', 'note',
+        'No-weight calibration is a factory procedure and is not implemented. Use 1.2 Material Clb, which is the procedure in the manual.'));
+      return;
+    }
+
     if (view.calTab === 0) {
-      // 1.1 Wt Clb — scale settings beside a live weight card
-      var wrap = el('div', 'cal-2col');
+      // 1.1 Wt Clb — scale settings beside the live weight card
+      var wrap = el('div', 'cal-wt');
       var rows = el('div', 'rows single');
       [
         { code: '1.1.1', label: 'Unit', type: 'enum',
@@ -474,39 +482,33 @@
       wrap.appendChild(rows);
 
       var card = el('div', 'cal-card');
-      card.appendChild(el('div', 'cal-v', 'Weight'));
-      var lcd = el('div', 'cal-lcd');
-      lcd.id = 'calLcd';
-      card.appendChild(lcd);
+      card.appendChild(el('div', 'cal-title', 'Weight'));
+      card.appendChild(calLcd());
       card.appendChild(volt('calV1', 'Sensor Voltage:'));
       card.appendChild(volt('calV2', 'Gain Voltage:'));
       var z = el('button', 'obtn', 'Zero Clb');
-      z.onclick = function () { M.zeroClb() ? say('Zero calibration stored.') : say('Wait for STAB before zeroing.'); };
+      z.onclick = function () {
+        say(M.zeroClb() ? 'Zero calibration stored.' : 'Wait for the STAB lamp before zeroing.');
+      };
       card.appendChild(z);
       var gn = el('button', 'obtn', 'Gain Clb');
       gn.onclick = function () { say('Gain Clb is a factory function — use 1.2 Material Clb.'); };
       card.appendChild(gn);
+
       wrap.appendChild(card);
       main.appendChild(wrap);
       return;
     }
 
-    if (view.calTab === 2) {
-      main.appendChild(el('div', 'note',
-        'No-weight calibration is a factory procedure and is not implemented. Use 1.2 Material Clb, which is the procedure in the manual.'));
-      return;
-    }
-
     // 1.2 Material Clb — the procedure from the manual
-    var grid = el('div', 'cal-2col');
+    var grid = el('div', 'cal-mat');
     var card2 = el('div', 'cal-card');
-    var lcd2 = el('div', 'cal-lcd');
-    lcd2.id = 'calLcd';
-    card2.appendChild(lcd2);
+    card2.appendChild(calLcd());
     card2.appendChild(volt('calV1', 'Sensor Voltage:'));
     card2.appendChild(volt('calV2', 'Gain Voltage:'));
 
     var btns = el('div', 'cal-btns');
+
     var zc = el('button', 'obtn', 'Zero Clb');
     zc.onclick = function () {
       if (M.zeroClb()) say('Zero stored. Now load a known weight and press Record Wt.');
@@ -518,13 +520,12 @@
       M.recordWt();
       say('Raw span captured. Type the true weight into Clb Wt, then press Wt Clb.');
     };
-    btns.appendChild(zc); btns.appendChild(rw);
 
     var clbRow = el('div', 'cal-clbwt');
     clbRow.appendChild(el('span', null, 'Clb Wt'));
     var cw = el('button', 'pval', String(M.clbWt));
     cw.onclick = function () {
-      keypad({ title: 'Clb Wt', value: M.clbWt, min: 0, max: 5000,
+      keypad({ title: 'Clb Wt', range: '0~5000', value: M.clbWt, min: 0, max: 5000,
         done: function (v) { M.clbWt = v; render(); } });
     };
     clbRow.appendChild(cw);
@@ -538,23 +539,38 @@
       render();
     };
 
+    btns.appendChild(zc);
+    btns.appendChild(rw);
+    btns.appendChild(clbRow);
+    btns.appendChild(wc);
     card2.appendChild(btns);
-    var bottom = el('div', 'cal-btns');
-    bottom.appendChild(clbRow);
-    bottom.appendChild(wc);
-    card2.appendChild(bottom);
     grid.appendChild(card2);
 
     // the Fast / Med / Slow / Discharge column, as on the real screen
     var side = el('div', 'cal-side');
-    [['fast', 'Fast'], ['med', 'Med'], ['slow', 'Slow'], ['disc', 'Discharge']].forEach(function (p) {
+    [['fast', 'Fast'], ['med', 'Med'], ['slow', 'Slow']].forEach(function (p) {
       var b = el('button', 'obtn' + (M.man[p[0]] ? ' on' : ''), p[1]);
       b.onclick = function () { M.man[p[0]] = !M.man[p[0]]; render(); };
       side.appendChild(b);
     });
+    side.appendChild(el('div', 'gap'));
+    var db = el('button', 'obtn' + (M.man.disc ? ' on' : ''), 'Discharge');
+    db.onclick = function () { M.man.disc = !M.man.disc; render(); };
+    side.appendChild(db);
+
     grid.appendChild(side);
     main.appendChild(grid);
   }
+
+  function calLcd() {
+    var d = el('div', 'cal-lcd');
+    d.id = 'calLcd';
+    var w = el('span'); w.id = 'calW'; w.textContent = '0';
+    d.appendChild(w);
+    d.appendChild(el('span', 'u', 'g'));
+    return d;
+  }
+
 
   function volt(id, label) {
     var d = el('div', 'cal-v');
@@ -633,11 +649,30 @@
     $('fClock').textContent = clock();
   }
 
-  function renderFast() {
+  // The readout and the instrument voltages repaint at the rate a real HMI
+  // refreshes them. At frame rate the digits and the mV values are an unreadable
+  // blur, which is not what the machine looks like.
+  var PAINT_MS = 150;
+  var lastPaint = 0;
+
+  function paintNumbers() {
     renderHome();
-    // things that change every frame
     var disp = M.display();
     all('.js-w').forEach(function (n) { n.textContent = disp; });
+
+    var calW = $('calW');
+    if (calW) {
+      calW.textContent = disp;
+      var v1 = $('calV1'), v2 = $('calV2');
+      if (v1) v1.textContent = M.sensorVoltage().toFixed(3) + ' mV';
+      if (v2) v2.textContent = M.gainVoltage().toFixed(3) + ' mV';
+    }
+  }
+
+  function renderFast(now) {
+    if (now - lastPaint >= PAINT_MS) { lastPaint = now; paintNumbers(); }
+
+    // lamps are booleans and now latch properly, so they can track every frame
     all('.js-op').forEach(function (n) { n.textContent = M.operationText(); });
     var lampState = {
       run: M.running, fast: M.fastOn, med: M.medOn, slow: M.slowOn,
@@ -650,14 +685,6 @@
     all('.js-status div').forEach(function (n) {
       n.classList.toggle('on', !!st[n.getAttribute('data-st')]);
     });
-
-    var lcd = $('calLcd');
-    if (lcd) {
-      lcd.textContent = M.display();
-      var v1 = $('calV1'), v2 = $('calV2');
-      if (v1) v1.textContent = M.sensorVoltage().toFixed(3) + ' mV';
-      if (v2) v2.textContent = (M.normal() * 0.002).toFixed(3) + ' mV';
-    }
 
     if (view.screen === 'manual') {
       all('[data-man]').forEach(function (b) {
@@ -770,7 +797,7 @@
     // which looks exactly like the machine seizing up.
     try {
       M.tick(dt);
-      renderFast();
+      renderFast(now);
       if (window.PFRig) window.PFRig.tick();
     } catch (err) {
       if (!frame.warned) { frame.warned = true; console.error('render/tick error', err); }

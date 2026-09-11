@@ -26,7 +26,8 @@
     dischargeRate: 900,   // g/s out of the chamber
     nomPressure: 0.40,    // MPa
     cellNoise: 0.18,      // g rms, load cell noise at rest
-    stabBand: 1.2,        // g/s, |dw/dt| under this reads as stable
+    stabBand: 0.8,        // g, reading must sit inside this band to read stable
+    stabWindow: 0.35,     // s, how long it must sit there
     zeroV: 2.195,         // mV at zero, per the Calibration screen
     vPerGram: 0.0009      // mV/g
   };
@@ -150,6 +151,11 @@
     this.shown = 0;
     this.dwdt = 0;
     this.lastShownRaw = 0;
+    this.stabWin = [];         // rolling window of readings, for the STAB latch
+    this.stabFlag = false;
+    this.zeroFlag = true;
+    this.gainV = -0.002;       // slow drift, so the voltages read like an instrument
+    this.sensDrift = 0;
 
     // controller
     this.recipes = factoryRecipes();
@@ -202,8 +208,10 @@
   };
 
   Machine.prototype.sensorVoltage = function () {
-    return K.zeroV + this.mass * K.vPerGram * this.rawPerGram;
+    return K.zeroV + this.mass * K.vPerGram * this.rawPerGram + this.sensDrift;
   };
+
+  Machine.prototype.gainVoltage = function () { return this.gainV; };
 
   Machine.prototype.quantise = function (w) {
     var d = this.division || 1;
@@ -225,13 +233,9 @@
     return v.toFixed(dp);
   };
 
-  Machine.prototype.stable = function () {
-    return Math.abs(this.dwdt) < K.stabBand;
-  };
+  Machine.prototype.stable = function () { return this.stabFlag; };
 
-  Machine.prototype.atZero = function () {
-    return Math.abs(this.quantise(this.shown)) < Math.max(0.5, this.division * 0.5);
-  };
+  Machine.prototype.atZero = function () { return this.zeroFlag; };
 
   /* ----- environment factors ----- */
 
@@ -370,6 +374,38 @@
     this.shown = approach(this.shown, target, dt, 0.05);
     var rate = (this.shown - prev) / dt;
     this.dwdt = this.dwdt * 0.7 + rate * 0.3;
+
+    // instrument voltages drift slowly rather than jumping every frame
+    var vd = Math.exp(-dt / 1.6);
+    this.gainV = this.gainV * vd + this.normal() * 0.0016 * Math.sqrt(1 - vd * vd);
+    this.sensDrift = this.sensDrift * vd + this.normal() * 0.0009 * Math.sqrt(1 - vd * vd);
+
+    // STAB is a latch over a window, not an instantaneous comparison: a real
+    // controller waits for the reading to sit still, and needs a clear
+    // excursion to drop out again. Without the hysteresis the lamp chatters.
+    var win = this.stabWin;
+    win.push(this.shown);
+    var need = Math.round(K.stabWindow / dt);
+    while (win.length > need) win.shift();
+    var mn = Infinity, mx = -Infinity;
+    for (var i = 0; i < win.length; i++) {
+      if (win[i] < mn) mn = win[i];
+      if (win[i] > mx) mx = win[i];
+    }
+    var band = Math.max(K.stabBand, this.division * K.stabBand);
+    if (this.stabFlag) {
+      if (mx - mn > band * 2.5) this.stabFlag = false;
+    } else if (win.length >= need && mx - mn < band) {
+      this.stabFlag = true;
+    }
+
+    // same treatment for ZERO, which sat right on the quantiser boundary
+    var zband = Math.max(0.9, this.division * 0.9);
+    if (this.zeroFlag) {
+      if (Math.abs(this.shown) > zband * 2) this.zeroFlag = false;
+    } else if (Math.abs(this.shown) < zband) {
+      this.zeroFlag = true;
+    }
   };
 
   /* ----- alarms ----- */

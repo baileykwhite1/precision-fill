@@ -295,11 +295,11 @@ html, body {
   position: relative;
   background: var(--tab);
   border: .18cqw solid #eef1f8;
-  padding: .9cqh .8cqw .9cqh .8cqw;
+  padding: .9cqh .8cqw .9cqh 2.4cqw;
   min-height: 8.4cqh;
   display: flex; align-items: center; justify-content: flex-end;
   text-align: right;
-  font-size: 3.2cqh;
+  font-size: 3cqh;
   color: #22405e;
   cursor: pointer;
   font-family: inherit;
@@ -428,37 +428,54 @@ html, body {
   grid-template-columns: 17cqw minmax(0,1fr);
   min-height: 0;
 }
-.cal-main { padding: 1.4cqh 1.2cqw; display: grid; gap: 1.2cqh; align-content: start; }
+.cal-main { padding: 2.2cqh 1.4cqw; display: grid; align-content: start; min-width: 0; }
+
+/* 1.2 Material Clb: one card, with the feed buttons in their own column */
+.cal-mat { display: grid; grid-template-columns: minmax(0,1fr) 14cqw; gap: 1.6cqw; }
+/* 1.1 Wt Clb: parameter rows beside the live weight card */
+.cal-wt { display: grid; grid-template-columns: minmax(0,34cqw) minmax(0,1fr); gap: 1.4cqw; }
+
 .cal-card {
   background: var(--panel);
   border: .18cqw solid var(--panel-edge);
-  border-radius: .6cqw;
-  padding: 1.4cqh 1.2cqw;
+  border-radius: 1cqw;
+  padding: 2.4cqh 1.6cqw;
   display: grid;
-  gap: 1.1cqh;
+  gap: 2cqh;
+  align-content: start;
+  min-width: 0;
 }
-.cal-2col { display: grid; grid-template-columns: minmax(0,1fr) 12cqw; gap: 1.2cqw; }
+.cal-title { text-align: center; font-size: 3.6cqh; color: var(--ink-on-blue); }
 .cal-lcd {
-  background: #0b0b0b;
-  border-radius: .3cqw;
-  padding: .8cqh 1cqw;
+  background: #070707;
+  border-radius: .25cqw;
+  margin: 0 .5cqw;
+  padding: 1.3cqh 1.2cqw;
   text-align: right;
-  font-size: 8.5cqh;
+  font-size: 12cqh;
   color: var(--lcd-amber);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
 }
-.cal-lcd .u { font-size: .5em; margin-left: .4em; }
-.cal-v { font-size: 3cqh; color: var(--ink-on-blue); display: flex; justify-content: space-between; gap: .8cqw; }
-.cal-v b { font-weight: 400; font-variant-numeric: tabular-nums; }
-.cal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqh 1cqw; }
+.cal-lcd .u { font-size: .46em; margin-left: .45em; }
+/* label and value meet near the middle, as on the real screen */
+.cal-v {
+  display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+  font-size: 3.2cqh; color: var(--ink-on-blue);
+}
+.cal-v span { text-align: right; padding-right: .9cqw; }
+.cal-v b { text-align: left; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.cal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqh 1.4cqw; }
 .obtn {
   background: linear-gradient(#f7bb4e, var(--orange));
   border: .18cqw solid #ffd489;
-  border-radius: .4cqw;
+  border-radius: .45cqw;
   color: #3a2a06;
-  font-size: 3.2cqh;
-  min-height: 8cqh;
+  font-size: 3.5cqh;
+  min-height: 10cqh;
   cursor: pointer;
   font-family: inherit;
   display: flex; align-items: center; justify-content: center;
@@ -466,8 +483,17 @@ html, body {
 .obtn:hover { filter: brightness(1.08); }
 .obtn:active { transform: translateY(.2cqh); }
 .obtn.on { background: linear-gradient(#54e069, #23b83a); border-color: #9df0ab; color: #06260d; }
-.cal-side { display: grid; gap: 1cqh; align-content: start; }
-.cal-clbwt { display: grid; grid-template-columns: 8cqw minmax(0,1fr); align-items: center; gap: .8cqw; font-size: 2.9cqh; }
+
+.cal-side { display: grid; gap: 1.6cqh; align-content: start; }
+.cal-side .obtn { min-height: 11.5cqh; }
+.cal-side .gap { height: 2.6cqh; }
+
+.cal-clbwt {
+  display: grid; grid-template-columns: 7.5cqw minmax(0,1fr);
+  align-items: center; gap: .8cqw;
+  font-size: 3cqh; color: var(--ink-on-blue);
+}
+.cal-clbwt .pval { min-height: 10cqh; font-size: 3.5cqh; }
 
 /* ---------------- manual override ---------------- */
 

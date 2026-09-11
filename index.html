@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precision Fill Emulator — SOVDA</title>
+<meta name="description" content="Software emulator of the SOVDA Precision Fill net-weigh filler and its AMC501-U HMI. Practise calibration and recipe tuning without a machine.">
+<link rel="stylesheet" href="css/hmi.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= machine ================= -->
+  <div class="machine">
+    <div class="bezel">
+      <div class="bezel-top">
+        <span>SOVDA <b>Precision Fill</b></span>
+        <span id="bezelState">AMC501-U &middot; emulator</span>
+      </div>
+
+      <div id="hmi">
+
+        <!-- ---------- home ---------- -->
+        <section class="screen on" data-screen="home">
+          <div class="readout">
+            <div class="readout-box">
+              <div class="lcd">
+                <div class="lcd-val js-lcd"><span class="js-w">0</span><span class="u js-u">g</span></div>
+                <div class="lamp-row js-lamps">
+                  <span data-lamp="run">RUN</span><span data-lamp="fast">FAST</span
+                  ><span data-lamp="med">MED</span><span data-lamp="slow">SLOW</span
+                  ><span data-lamp="ou">O/U</span><span data-lamp="hold">HOLD</span
+                  ><span data-lamp="disc">DISC</span><span data-lamp="clamp">CLAMP</span>
+                </div>
+              </div>
+              <div class="scale-status js-status">
+                <div data-st="stab"><i></i>STAB</div>
+                <div data-st="zero"><i></i>ZERO</div>
+                <div data-st="net"><i></i>NET</div>
+                <div data-st="sstop"><i></i>S-STOP</div>
+              </div>
+            </div>
+          </div>
+          <div class="op-line">Current Operation:<span class="js-op">Stop</span></div>
+
+          <div class="home-body">
+            <div class="hpanel">
+              <div class="hrow"><span class="k">Recipe</span>:<button class="hfield" id="fRecipe">(01)2300g</button></div>
+              <div class="hrow"><span class="k">Target</span>:<span id="fTarget">2300</span></div>
+              <div class="hrow"><span class="k">Batch</span>:<span id="fBatch">0</span></div>
+              <div class="hrow"><span class="k">Complete</span>:<span id="fComplete">0</span></div>
+              <div class="hrow"><span class="k">Warring</span>:<button class="hfield" id="fWarn">No warning</button></div>
+            </div>
+            <div class="hpanel">
+              <div class="hrow"><span class="k wide">Acc. Nums</span>:<span class="big" id="fAccN">0</span></div>
+              <div class="hrow"><span class="k wide">Acc. Wt</span>:<span class="big" id="fAccW">0</span></div>
+              <div class="hrow"><span class="k wide">Work Mode</span><span id="fMode">&#9313;Hopper</span></div>
+              <div class="hrow"><span class="k wide">Combine</span>:<span id="fComb">1</span></div>
+              <div class="hrow"><span id="fClock">&mdash;</span></div>
+            </div>
+          </div>
+
+          <div class="fkeys">
+            <button class="fkey" data-act="settings"><span class="f">F1</span>System<br>Settings</button>
+            <button class="fkey" data-act="shortcut"><span class="f">F2</span>Shortcut</button>
+            <button class="fkey" data-act="clralarm"><span class="f">F3</span>Clr Alarm</button>
+            <button class="fkey" data-act="zero"><span class="f">F4</span>Zero</button>
+            <button class="fkey" data-act="discharge"><span class="f">F5</span>Discharge</button>
+            <button class="fkey" data-act="manual"><span class="f">F6</span>Manual<br>Override</button>
+            <button class="fkey grey" data-act="startstop"><span class="f">F7</span><span id="fStart">Start</span></button>
+          </div>
+        </section>
+
+        <!-- ---------- system settings menu ---------- -->
+        <section class="screen" data-screen="settings">
+          <div class="topbar">
+            <button class="tb-btn" data-act="home">&lt; Back</button>
+            <div class="tb-title">System Settings</div>
+            <button class="tb-btn" data-act="home">Home</button>
+          </div>
+          <div class="menu-grid" id="menuGrid"></div>
+        </section>
+
+        <!-- ---------- generic parameter screen ---------- -->
+        <section class="screen" data-screen="params">
+          <div class="topbar">
+            <button class="tb-btn" data-act="back">&lt; Back</button>
+            <div class="tb-title" id="pTitle">&nbsp;</div>
+            <button class="tb-btn" data-act="home">Home</button>
+          </div>
+          <div class="settings-body">
+            <div class="tabs" id="pTabs"></div>
+            <div class="rows" id="pRows"></div>
+          </div>
+        </section>
+
+        <!-- ---------- calibration ---------- -->
+        <section class="screen" data-screen="cal">
+          <div class="topbar">
+            <button class="tb-btn" data-act="back">&lt; Back</button>
+            <div class="tb-title">1.Calibration</div>
+            <button class="tb-btn" data-act="home">Home</button>
+          </div>
+          <div class="cal-wrap">
+            <div class="tabs" id="calTabs"></div>
+            <div class="cal-main" id="calMain"></div>
+          </div>
+        </section>
+
+        <!-- ---------- manual override ---------- -->
+        <section class="screen" data-screen="manual">
+          <div class="readout">
+            <div class="readout-box">
+              <div class="lcd">
+                <div class="lcd-val js-lcd"><span class="js-w">0</span><span class="u js-u">g</span></div>
+                <div class="lamp-row js-lamps">
+                  <span data-lamp="run">RUN</span><span data-lamp="fast">FAST</span
+                  ><span data-lamp="med">MED</span><span data-lamp="slow">SLOW</span
+                  ><span data-lamp="ou">O/U</span><span data-lamp="hold">HOLD</span
+                  ><span data-lamp="disc">DISC</span><span data-lamp="clamp">CLAMP</span>
+                </div>
+              </div>
+              <div class="scale-status js-status">
+                <div data-st="stab"><i></i>STAB</div>
+                <div data-st="zero"><i></i>ZERO</div>
+                <div data-st="net"><i></i>NET</div>
+                <div data-st="sstop"><i></i>S-STOP</div>
+              </div>
+            </div>
+          </div>
+          <div class="op-line">Current Operation:<span class="js-op">Stop</span></div>
+          <div class="topbar">
+            <button class="tb-btn" data-act="home">&lt; Back</button>
+            <div class="tb-title">Manual Override</div>
+            <button class="tb-btn" data-act="home">Home</button>
+          </div>
+          <div class="man-body">
+            <div class="man-grid">
+              <button class="mbtn" data-man="fast">Fast</button>
+              <button class="mbtn" data-man="med">Med</button>
+              <button class="mbtn" data-man="slow">Slow</button>
+              <button class="mbtn" data-man="clamp">Clamp</button>
+              <button class="mbtn dim">Flap</button>
+              <button class="mbtn" data-man="disc">Disc</button>
+              <button class="mbtn dim">Belt</button>
+              <button class="mbtn dim">Raise/<br>Fall</button>
+              <button class="mbtn" data-man="slowstop">Slow<br>Stop</button>
+            </div>
+            <div class="io-card">
+              <h4>IO Port Runtime State</h4>
+              <div class="io-line">Input:<span class="ios" id="ioIn1"></span><span class="ios" id="ioIn2"></span></div>
+              <div class="io-line">Output:<span class="ios" id="ioOut1"></span><span class="ios" id="ioOut2"></span><span class="ios" id="ioOut3"></span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- popup layer ---------- -->
+        <div class="pop-back" id="pop"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= test rig ================= -->
+  <aside class="rig">
+
+    <div class="card">
+      <h3>Foot pedal</h3>
+      <button class="pedal" id="pedal">
+        DISCHARGE
+        <small>press when the weight is ready &middot; or hit Space</small>
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>Machine &amp; product</h3>
+      <div class="ctl">
+        <label>
+          <span class="lv">Coffee in hopper <b id="hopV">12.0 kg</b></span>
+          <input type="range" id="hopper" min="0" max="25000" step="100" value="12000">
+        </label>
+        <label>
+          <span class="lv">Air pressure <b id="airV">0.40 MPa</b></span>
+          <input type="range" id="air" min="0.05" max="0.55" step="0.01" value="0.40">
+        </label>
+        <label>
+          <span>Coffee loaded (whole bean)</span>
+          <select id="coffee"></select>
+        </label>
+        <div class="btn-row">
+          <button class="mini" id="refill">Refill hopper</button>
+          <button class="mini" id="empty">Empty chamber</button>
+        </div>
+        <div id="rigWarn" class="warn"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Last 25 fills</h3>
+      <div class="tiles">
+        <div class="tile" id="tMean"><div class="lab">Mean</div><div class="val">&mdash;</div><div class="sub">&nbsp;</div></div>
+        <div class="tile" id="tSd"><div class="lab">Spread</div><div class="val">&mdash;</div><div class="sub">&nbsp;</div></div>
+        <div class="tile" id="tRate"><div class="lab">Rate</div><div class="val">&mdash;</div><div class="sub">&nbsp;</div></div>
+      </div>
+      <svg id="chart" viewBox="0 0 352 150" role="img" aria-labelledby="chartTitle"></svg>
+      <div id="chartTitle" class="chart-note"></div>
+      <div id="calWarn" class="warn"></div>
+    </div>
+
+    <div class="card">
+      <h3>Fill log</h3>
+      <div class="wrap">
+        <table class="logtable">
+          <thead><tr><th>#</th><th>Recipe</th><th>Reading</th><th>Dev</th><th>Cycle</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="mini" id="clearLog">Clear log</button>
+        <button class="mini" id="csv">Copy CSV</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Training</h3>
+      <div class="hint" id="taskHint">Pick an exercise to set the machine into a known state.</div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="mini" data-task="tune">Tune a new recipe</button>
+        <button class="mini" data-task="calibrate">Re-calibrate</button>
+        <button class="mini" data-task="fault">Diagnose a fault</button>
+        <button class="mini" data-task="reset">Factory reset</button>
+      </div>
+      <details class="task"><summary>Keyboard &amp; tips</summary>
+        <p><b>Space</b> foot pedal &middot; <b>S</b> start/stop &middot; <b>H</b> home &middot; <b>C</b> clear alarm.
+        The default system password is <b>0</b>.</p>
+      </details>
+    </div>
+
+  </aside>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script src="js/sim.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/rig.js"></script>
+</body>
+</html>

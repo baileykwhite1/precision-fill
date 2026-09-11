@@ -26,6 +26,7 @@
     dischargeRate: 900,   // g/s out of the chamber
     nomPressure: 0.40,    // MPa
     cellNoise: 0.18,      // g rms, load cell noise at rest
+    displayTau: 0.010,    // s, readout settling — near-live, so the count does not trail
     stabBand: 0.8,        // g, reading must sit inside this band to read stable
     stabWindow: 0.35,     // s, how long it must sit there
     zeroV: 2.195,         // mV at zero, per the Calibration screen
@@ -370,8 +371,9 @@
   Machine.prototype.stepScale = function (dt) {
     var target = this.trueReading() + this.normal() * K.cellNoise;
     var prev = this.shown;
-    // load cell + filter settling
-    this.shown = approach(this.shown, target, dt, 0.05);
+    // Load cell + filter settling. Kept short: the real readout tracks the
+    // filling weight essentially live, so the digits must not lag behind it.
+    this.shown = approach(this.shown, target, dt, K.displayTau);
     var rate = (this.shown - prev) / dt;
     this.dwdt = this.dwdt * 0.7 + rate * 0.3;
 
@@ -572,6 +574,16 @@
           var fin = this.quantise(this.trueReading());
           this.lastFill = fin;        // what the machine believes it weighed
           this.lastTrue = this.mass;  // what a check scale would say
+
+          // AI Pack applies the manual's own accuracy rule automatically — over
+          // by n grams, raise Slow by n — which is why the manual warns it will
+          // rewrite the feed values you tuned by hand. It trims here, on the
+          // weighment, rather than after the discharge: an out-of-tolerance fill
+          // blocks the discharge, and that is exactly when it needs to adapt.
+          if (r.aiPack && r.target > 0) {
+            var trim = Math.max(-3, Math.min(3, Math.round(fin - r.target)));
+            if (trim !== 0) r.slow = Math.max(0, Math.min(r.target, r.slow + trim));
+          }
           if (r.ou.func) {
             if (fin > r.target + r.ou.over) {
               this.raise('OVER', 'Over tolerance');

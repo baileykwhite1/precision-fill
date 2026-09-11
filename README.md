@@ -45,16 +45,35 @@ of coffee and a customer's afternoon. Here you can get them wrong for free.
 | **Manual Override** | Fast / Med / Slow / Disc latches, Clamp as a foot-pedal signal, IO port runtime state |
 | **7 Acc Data** | Batch Set, accumulated totals, clear |
 | **Cycle timing** | All six Time Set delays drive the real sequence |
-| **Alarms** | Over/Under with pause, batch finished, `OFL` overload, low air, hopper empty |
+| **Alarms** | Over/Under with pause, batch finished, `OFL` overload, low air, hopper empty — all shown in red, pulsing until acknowledged |
+| **AI Pack** | Live, not a dead toggle: it applies the manual's accuracy rule automatically and rewrites Slow, which is why the manual says to note your values first |
 | **Rig** | Foot pedal (Space), hopper level, air pressure, six whole-bean products, run chart, fill log, CSV export |
+| **Exam mode** | Hides the instructor panel so a trainee sees only the machine |
 
 Firmware quirks are reproduced rather than corrected — `Warring` on the home
 screen, `Seleted Recipe` on 4.1.1 — because that is what an operator sees.
 
+## Exam mode — testing your team
+
+Set up a fault from the Training card, then press **Hide this panel — exam mode**.
+Everything except the foot pedal disappears, so the trainee has only the HMI to go
+on: no hopper gauge, no air slider, no statistics, no check-scale column. It
+persists across a reload, so refreshing does not hand them the answer.
+**Shift + I** toggles it back for the instructor.
+
+The four scenarios each hand over a clean machine:
+
+| Scenario | What it sets up |
+|---|---|
+| Tune a new recipe | Rec 6 at 250 g with Med 350 / Slow 25 — both far too high |
+| Re-calibrate | A span error up to 3% plus a tare offset, empty hopper and chamber |
+| Diagnose a fault | One of four faults at random: low air, a span error, Med far too low, or a starved hopper |
+| Factory reset | Back to the shipped state |
+
 ## Keyboard
 
-`Space` foot pedal · `S` start/stop · `H` home · `C` clear alarm · `Esc` close popup.
-Default system password is `0`.
+`Space` foot pedal · `S` start/stop · `H` home · `C` clear alarm · `Esc` close popup ·
+`Shift + I` instructor panel. Default system password is `0`.
 
 ## Layout
 
@@ -64,10 +83,17 @@ css/hmi.css       AMC501-U skin, traced from the screenshots
 js/sim.js         machine model — physics + controller state machine, no DOM
 js/ui.js          screens, popups, keypads, render loop
 js/rig.js         hopper/air/product controls, statistics, run chart, fill log
+test/functions.js headless functional suite over the model
 docs/DESIGN.md    the machine model, and what is documented vs inferred
 ```
 
-`js/sim.js` is deliberately DOM-free so it can be driven headlessly:
+`js/sim.js` is deliberately DOM-free, so the whole machine can be driven and
+tested without a browser:
+
+```bash
+node test/functions.js     # 36 checks over the cycle, alarms, batch, calibration,
+                           # feed modes, scale settings, manual override and AI Pack
+```
 
 ```js
 global.window = global;

@@ -139,7 +139,32 @@ wrong, which is a failure mode worth being able to practise on.
 ### Alarms
 
 Over Tolerance, Under Tolerance, Batch Finished, `OFL` overload, low air
-pressure, and hopper-empty / no-flow. All clear with `Clr Alarm` (F3).
+pressure, and hopper-empty / no-flow. All clear with `Clr Alarm` (F3). An alarm is
+a fault rather than a state, so it is shown in red and pulses until acknowledged —
+the warning field, the `O/U` indicator on the LCD strip and the `Clr Alarm` key
+all go red together.
+
+### AI Pack
+
+The manual says only that it "turns on/off the intelligent packing function" and
+warns that it will modify your feed values. The emulator makes it do the obvious
+thing: it applies the manual's own accuracy rule automatically, trimming Slow
+toward the target by up to 3 g per weighment. It trims on the **weighment**, not
+after the discharge, because an out-of-tolerance fill blocks the discharge and
+that is precisely when it needs to adapt.
+
+### The readout and the STAB lamp
+
+Two details that matter more than they sound. The weight is repainted every frame
+with only a 10 ms display filter, because the real readout counts up essentially
+live and digits that lag or stutter read as a broken machine. The instrument
+voltages are repainted a few times a second instead, since they barely move.
+
+`STAB` is a **latch over a window**, not an instantaneous comparison: the reading
+must sit inside a band for 0.35 s to go stable, and needs an excursion of 2.5x
+that band to drop out. Compared instantaneously, load-cell noise sits on the
+threshold and the lamp chatters continuously. `ZERO` gets the same hysteresis for
+the same reason.
 
 ## Physics — the part the manual doesn't state
 
@@ -194,7 +219,10 @@ Called out so nobody mistakes the emulator for the spec:
   13 System appear as menu tiles but are not implemented; 4.4 Flapping, 4.6 Valve
   Set and 4.7 Feed Analog are stubbed, which matches the manual telling you not
   to touch them.
-- **Exact alarm wording** beyond the Over/Under alarm the manual describes.
+- **Exact alarm wording** beyond the Over/Under alarm the manual describes, and
+  the fact that alarms are rendered red — the screenshots show no active alarm.
+- **The AI Pack trim rule.** The manual documents the toggle and its warning, not
+  the algorithm; the ±3 g Slow trim is ours.
 - **The pre-loaded recipes' feed values.** The manual gives the five targets
   (2300 / 1000 / 454 / 100 / 500 g) but only Rec 5's feeds are visible in a
   screenshot; the others use tuned values from this model.

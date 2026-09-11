@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Precision Fill Emulator — SOVDA</title>
 <meta name="description" content="Software emulator of the SOVDA Precision Fill net-weigh filler and its AMC501-U HMI. Practise calibration and recipe tuning without a machine.">
-<link rel="stylesheet" href="css/hmi.css">
+<link rel="stylesheet" href="css/hmi.css?v=3">
 </head>
 <body>
 <div id="app">
@@ -163,12 +163,15 @@
   <!-- ================= test rig ================= -->
   <aside class="rig">
 
-    <div class="card">
+    <div class="card keep">
       <h3>Foot pedal</h3>
       <button class="pedal" id="pedal">
         DISCHARGE
         <small>press when the weight is ready &middot; or hit Space</small>
       </button>
+      <div class="examHint" style="margin-top:10px">
+        Instructor panel hidden. <b>Shift&nbsp;+&nbsp;I</b> brings it back.
+      </div>
     </div>
 
     <div class="card">
@@ -229,6 +232,13 @@
         <button class="mini" data-task="fault">Diagnose a fault</button>
         <button class="mini" data-task="reset">Factory reset</button>
       </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="mini" id="examBtn">Hide this panel &mdash; exam mode</button>
+      </div>
+      <div class="hint" style="margin-top:6px">
+        Set up a fault, then hide the panel. The trainee sees only the machine and
+        has to find it from the HMI. <b>Shift&nbsp;+&nbsp;I</b> toggles it back.
+      </div>
       <details class="task"><summary>Keyboard &amp; tips</summary>
         <p><b>Space</b> foot pedal &middot; <b>S</b> start/stop &middot; <b>H</b> home &middot; <b>C</b> clear alarm.
         The default system password is <b>0</b>.</p>
@@ -240,8 +250,8 @@
 
 <div class="tip" id="tip"></div>
 
-<script src="js/sim.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/rig.js"></script>
+<script src="js/sim.js?v=3"></script>
+<script src="js/ui.js?v=3"></script>
+<script src="js/rig.js?v=3"></script>
 </body>
 </html>

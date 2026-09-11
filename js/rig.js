@@ -68,6 +68,7 @@
       r.dischargeZero = 30;
       M.sel = 6;
       M.log.length = 0;
+      M.mass = 0; M.transit.length = 0;
       M.pressure = 0.40; airSlider.value = 0.40;
       M.hopper = M.hopperCap; hopSlider.value = M.hopperCap;
       return '<b>Tune Rec 6 (250 g).</b> Med is 350 and Slow is 25 — both far too high. ' +
@@ -97,6 +98,8 @@
       M.sel = 5;
       M.recipes[4] = PFSim.makeRecipe(5, '500g', 500, 500, 130, 9, 30);
       M.log.length = 0;
+      M.mass = 0; M.transit.length = 0;
+      M.accNums = 0; M.accWt = 0; M.complete = 0; M.batchSet = 0;
       if (which === 0) { M.pressure = 0.17; airSlider.value = 0.17; }
       else if (which === 1) { M.rawPerGram = 1.045; }
       else if (which === 2) { M.recipes[4].med = 45; }
@@ -150,6 +153,28 @@
     row.appendChild(btn);
     host.parentNode.insertBefore(row, host.nextSibling);
   }
+
+  /* ---------------- exam mode ----------------
+     Hides the instructor panel so a trainee has to diagnose from the HMI alone.
+     Persisted, so a reload does not hand them the answer. */
+
+  var app = document.getElementById('app');
+
+  function setExam(on) {
+    app.classList.toggle('exam', on);
+    try { localStorage.setItem('pf-exam', on ? '1' : '0'); } catch (e) { /* private mode */ }
+  }
+
+  $('examBtn').onclick = function () { setExam(true); };
+
+  document.addEventListener('keydown', function (e) {
+    if (e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+      e.preventDefault();
+      setExam(!app.classList.contains('exam'));
+    }
+  });
+
+  try { if (localStorage.getItem('pf-exam') === '1') app.classList.add('exam'); } catch (e) { /* ignore */ }
 
   /* ---------------- statistics tiles ---------------- */
 

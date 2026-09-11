@@ -363,6 +363,14 @@
       var txt = String(r.get());
       v = el('button', 'pval' + (txt.length > 6 ? ' enum' : ''), txt);
       v.onclick = function () { r.next(); render(); };
+    } else if (r.type === 'text') {
+      v = el('button', 'pval', r.get() || '—');
+      v.onclick = function () {
+        textpad({
+          title: r.label.replace(/\n/g, ' '), value: r.get(),
+          done: function (s) { r.set(s); render(); }
+        });
+      };
     } else if (r.type === 'ro') {
       v = el('div', 'pval', String(r.get()));
     } else if (r.type === 'action') {
@@ -637,11 +645,14 @@
     $('fTarget').textContent = r.target;
     $('fBatch').textContent = M.batchSet;
     $('fComplete').textContent = M.complete;
-    $('fWarn').textContent = M.alarm ? M.alarm.text : 'No warning';
+    var warnEl = $('fWarn');
+    warnEl.textContent = M.alarm ? M.alarm.text : 'No warning';
+    warnEl.classList.toggle('alarm', !!M.alarm);
     $('fAccN').textContent = M.accNums;
     $('fAccW').textContent = Math.round(M.accWt);
     $('fComb').textContent = M.combine;
     $('fMode').textContent = '②Hopper';
+    document.querySelector('[data-act="clralarm"]').classList.toggle('alarmkey', !!M.alarm);
     $('fStart').textContent = M.running ? 'Stop' : 'Start';
     var sk = document.querySelector('[data-act="startstop"]');
     sk.classList.toggle('grey', !M.running);
@@ -649,28 +660,33 @@
     $('fClock').textContent = clock();
   }
 
-  // The readout and the instrument voltages repaint at the rate a real HMI
-  // refreshes them. At frame rate the digits and the mV values are an unreadable
-  // blur, which is not what the machine looks like.
-  var PAINT_MS = 150;
-  var lastPaint = 0;
+  // Two different repaint rates, because they are two different kinds of number.
+  // The weight is counting up during a fill and must look live and smooth, so it
+  // repaints every frame. The mV readings barely move and only ever needed
+  // slowing down, so they repaint a few times a second.
+  var VOLT_MS = 220;
+  var lastVolt = 0;
+  var lastW = null;
 
-  function paintNumbers() {
-    renderHome();
+  function paintWeight() {
     var disp = M.display();
+    if (disp === lastW) return;          // skip DOM writes when nothing changed
+    lastW = disp;
     all('.js-w').forEach(function (n) { n.textContent = disp; });
-
     var calW = $('calW');
-    if (calW) {
-      calW.textContent = disp;
-      var v1 = $('calV1'), v2 = $('calV2');
-      if (v1) v1.textContent = M.sensorVoltage().toFixed(3) + ' mV';
-      if (v2) v2.textContent = M.gainVoltage().toFixed(3) + ' mV';
-    }
+    if (calW) calW.textContent = disp;
+  }
+
+  function paintVolts() {
+    var v1 = $('calV1'), v2 = $('calV2');
+    if (v1) v1.textContent = M.sensorVoltage().toFixed(3) + ' mV';
+    if (v2) v2.textContent = M.gainVoltage().toFixed(3) + ' mV';
   }
 
   function renderFast(now) {
-    if (now - lastPaint >= PAINT_MS) { lastPaint = now; paintNumbers(); }
+    paintWeight();
+    renderHome();
+    if (now - lastVolt >= VOLT_MS) { lastVolt = now; paintVolts(); }
 
     // lamps are booleans and now latch properly, so they can track every frame
     all('.js-op').forEach(function (n) { n.textContent = M.operationText(); });
@@ -679,12 +695,16 @@
       ou: M.ouLamp, hold: M.holdOn, disc: M.discOn, clamp: M.clampOn
     };
     all('.js-lamps span').forEach(function (n) {
-      n.classList.toggle('on', !!lampState[n.getAttribute('data-lamp')]);
+      var k = n.getAttribute('data-lamp');
+      n.classList.toggle('on', !!lampState[k]);
+      // an alarm lamp is red, not green — it is a fault, not a state
+      if (k === 'ou') n.classList.toggle('alarm', !!M.ouLamp);
     });
     var st = { stab: M.stable(), zero: M.atZero(), net: false, sstop: false };
     all('.js-status div').forEach(function (n) {
       n.classList.toggle('on', !!st[n.getAttribute('data-st')]);
     });
+    document.getElementById('bezelState').classList.toggle('alarm', !!M.alarm);
 
     if (view.screen === 'manual') {
       all('[data-man]').forEach(function (b) {
@@ -771,17 +791,23 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Escape') { closePop(); return; }
+
     if (e.code === 'Space') {
       e.preventDefault();
+      if (e.repeat) return;              // holding the key is one press, not many
       M.pressPedal();
       $('pedal').classList.add('down');
       return;
     }
+    // letter shortcuts must not fire while a keypad or list is open, or they
+    // start the machine while someone is typing a value
+    if (pop.classList.contains('on') || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+
     var k = e.key.toLowerCase();
     if (k === 's') ACT.startstop();
     else if (k === 'h') goHome();
     else if (k === 'c') ACT.clralarm();
-    else if (k === 'escape') closePop();
   });
   document.addEventListener('keyup', function (e) {
     if (e.code === 'Space') $('pedal').classList.remove('down');

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Precision Fill Emulator — SOVDA</title>
 <meta name="description" content="Software emulator of the SOVDA Precision Fill net-weigh filler and its AMC501-U HMI. Practise calibration and recipe tuning without a machine.">
-<link rel="stylesheet" href="css/hmi.css?v=3">
+<link rel="stylesheet" href="css/hmi.css?v=5">
 </head>
 <body>
 <div id="app">
@@ -174,7 +174,44 @@
       </div>
     </div>
 
-    <div class="card">
+    <!-- ===== service call: what the trainee can see ===== -->
+
+    <div class="card fault-only" id="callCard">
+      <h3>Service call</h3>
+      <div class="hint" id="callNote"></div>
+    </div>
+
+    <div class="card fault-only" id="checkCard">
+      <h3>Check scale</h3>
+      <div class="scale-read">
+        <div class="scale-val" id="checkVal">&mdash;</div>
+        <div class="scale-unit">g</div>
+      </div>
+      <div class="scale-sub" id="checkSub">Run a bag and weigh it.</div>
+      <div class="scale-hist" id="checkHist"></div>
+    </div>
+
+    <div class="card fault-only" id="inspectCard">
+      <h3>Walk over and check</h3>
+      <div class="inspect" id="inspectList"></div>
+    </div>
+
+    <div class="card fault-only" id="answerCard">
+      <h3>Instructor</h3>
+      <div id="answerBody">
+        <div class="hint">The fault is hidden. Reveal it when you want to talk it
+          through, or leave it closed while the trainee works.</div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="mini" id="revealBtn">Reveal the fault</button>
+          <button class="mini" id="newFaultBtn">Another fault</button>
+          <button class="mini" id="endCallBtn">End call</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== instructor bench: hidden during a service call ===== -->
+
+    <div class="card hide-in-fault">
       <h3>Machine &amp; product</h3>
       <div class="ctl">
         <label>
@@ -197,7 +234,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card hide-in-fault">
       <h3>Last 25 fills</h3>
       <div class="tiles">
         <div class="tile" id="tMean"><div class="lab">Mean</div><div class="val">&mdash;</div><div class="sub">&nbsp;</div></div>
@@ -209,7 +246,7 @@
       <div id="calWarn" class="warn"></div>
     </div>
 
-    <div class="card">
+    <div class="card hide-in-fault">
       <h3>Fill log</h3>
       <div class="wrap">
         <table class="logtable">
@@ -223,24 +260,40 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card hide-in-fault">
       <h3>Training</h3>
-      <div class="hint" id="taskHint">Pick an exercise to set the machine into a known state.</div>
-      <div class="btn-row" style="margin-top:8px">
-        <button class="mini" data-task="tune">Tune a new recipe</button>
-        <button class="mini" data-task="calibrate">Re-calibrate</button>
-        <button class="mini" data-task="fault">Diagnose a fault</button>
-        <button class="mini" data-task="reset">Factory reset</button>
+
+      <div class="ex">
+        <button class="mini wide" data-task="fault">Start a fault call</button>
+        <p>Breaks the machine one of six ways and hands it over with only a check
+          scale, as if a roastery had rung in. The answer stays hidden until you
+          reveal it.</p>
       </div>
-      <div class="btn-row" style="margin-top:8px">
-        <button class="mini" id="examBtn">Hide this panel &mdash; exam mode</button>
+      <div class="ex">
+        <button class="mini wide" data-task="tune">Practise tuning a recipe</button>
+        <p>Loads Rec 6 at 250 g with Med and Slow far too high. Work the manual's
+          method: Med down by 10 until the weights stop agreeing, then Slow by the
+          deviation.</p>
       </div>
-      <div class="hint" style="margin-top:6px">
-        Set up a fault, then hide the panel. The trainee sees only the machine and
-        has to find it from the HMI. <b>Shift&nbsp;+&nbsp;I</b> toggles it back.
+      <div class="ex">
+        <button class="mini wide" data-task="calibrate">Practise calibration</button>
+        <p>Knocks the scale out and empties the machine, so you can run 1.2
+          Material Clb start to finish with a known charge.</p>
+      </div>
+      <div class="ex">
+        <button class="mini wide" data-task="reset">Reset to factory</button>
+        <p>Five pre-loaded recipes, scale calibrated, 12 kg in the hopper at
+          0.4 MPa.</p>
+      </div>
+
+      <div class="hint" id="taskHint" style="margin-top:10px"></div>
+
+      <div class="btn-row" style="margin-top:10px">
+        <button class="mini" id="examBtn">Hide this panel</button>
       </div>
       <details class="task"><summary>Keyboard &amp; tips</summary>
-        <p><b>Space</b> foot pedal &middot; <b>S</b> start/stop &middot; <b>H</b> home &middot; <b>C</b> clear alarm.
+        <p><b>Space</b> foot pedal &middot; <b>S</b> start/stop &middot; <b>H</b> home &middot;
+        <b>C</b> clear alarm &middot; <b>Shift&nbsp;+&nbsp;I</b> instructor panel.
         The default system password is <b>0</b>.</p>
       </details>
     </div>
@@ -250,8 +303,9 @@
 
 <div class="tip" id="tip"></div>
 
-<script src="js/sim.js?v=3"></script>
-<script src="js/ui.js?v=3"></script>
-<script src="js/rig.js?v=3"></script>
+<script src="js/sim.js?v=5"></script>
+<script src="js/faults.js?v=5"></script>
+<script src="js/ui.js?v=5"></script>
+<script src="js/rig.js?v=5"></script>
 </body>
 </html>

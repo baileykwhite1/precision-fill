@@ -263,6 +263,12 @@ Called out so nobody mistakes the emulator for the spec:
   the fact that alarms are rendered red — the screenshots show no active alarm.
 - **The AI Pack trim rule.** The manual documents the toggle and its warning, not
   the algorithm; the ±3 g Slow trim is ours.
+- **The training faults** in `js/faults.js`. The failure modes are real and the
+  fixes follow the manual, but the customer complaints, the wording and the
+  chosen severities are ours. `test/faults.js` checks that each one actually
+  produces the signature its answer claims, and that no two look alike across
+  the five things a tech can observe — HMI scatter, whether a check scale agrees
+  and which way, weight, cycle time, and whether the machine keeps running.
 - **The pre-loaded recipes' feed values.** The manual gives the five targets
   (2300 / 1000 / 454 / 100 / 500 g) but only Rec 5's feeds are visible in a
   screenshot; the others use tuned values from this model.

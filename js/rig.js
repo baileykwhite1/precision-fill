@@ -54,10 +54,172 @@
     );
   };
 
-  /* ---------------- training scenarios ---------------- */
+  /* ---------------- faults ----------------
+     Each is a real thing that goes wrong on a Precision Fill. `complaint` is what
+     the roastery rings in with and is shown to the trainee; everything else is
+     the answer and stays hidden until the instructor reveals it. */
+
+  var FAULTS = PFFaults.LIST;
+
+  var activeFault = null;
+  var revealed = false;
+  var inspected = {};
+
+  function clearFaultState() {
+    M.rawPerGram = 1; M.rawOffset = 0;
+    M.pressure = 0.40; airSlider.value = 0.40;
+    M.hopper = M.hopperCap; hopSlider.value = M.hopperCap;
+    M.recipes[4] = PFSim.makeRecipe(5, '500g', 500, 500, 130, 9, 30);
+    M.sel = 5;
+    M.mass = 0; M.transit.length = 0;
+    M.log.length = 0;
+    M.accNums = 0; M.accWt = 0; M.complete = 0; M.batchSet = 0;
+    M.alarm = null; M.ouLamp = false;
+    M.stop();
+  }
+
+  // Draw from a shuffled bag rather than at random, so a training session works
+  // through every fault before any of them comes round again.
+  var faultBag = [];
+
+  function nextFault() {
+    if (!faultBag.length) {
+      faultBag = FAULTS.slice();
+      for (var i = faultBag.length - 1; i > 0; i--) {
+        var j = Math.floor(M.rnd() * (i + 1));
+        var t = faultBag[i]; faultBag[i] = faultBag[j]; faultBag[j] = t;
+      }
+      // avoid repeating the one we just finished across the shuffle boundary
+      if (activeFault && faultBag[0].id === activeFault.id && faultBag.length > 1) {
+        faultBag.push(faultBag.shift());
+      }
+    }
+    return faultBag.shift();
+  }
+
+  function startFaultCall() {
+    clearFaultState();
+    var pick = nextFault();
+    activeFault = pick;
+    pick.setup(M);
+    airSlider.value = M.pressure;
+    hopSlider.value = M.hopper;
+    revealed = false;
+    inspected = {};
+    app.classList.add('fault');
+    $('callNote').innerHTML = '<b>Reported:</b> ' + pick.complaint;
+    renderAnswer();
+    renderInspect();
+    renderCheck();
+    window.PFUI.render();
+  }
+
+  function endFaultCall() {
+    clearFaultState();
+    activeFault = null;
+    revealed = false;
+    app.classList.remove('fault');
+    $('taskHint').textContent = 'Call ended and the machine is back to factory settings.';
+    window.PFUI.render();
+    renderStats(); drawChart(); renderLog();
+  }
+
+  /* ----- what the trainee can go and look at ----- */
+
+  var INSPECTIONS = [
+    { id: 'air', label: 'Read the air gauge',
+      value: function () { return M.pressure.toFixed(2) + ' MPa'; },
+      note: function () { return M.pressure < 0.3 ? 'spec is 0.4 MPa' : 'at spec'; } },
+    { id: 'hopper', label: 'Look in the hopper',
+      value: function () { return (M.hopper / 1000).toFixed(1) + ' kg'; },
+      note: function () { return M.hopper < 1500 ? 'nearly out' : 'plenty'; } },
+    { id: 'coffee', label: 'Check what is loaded',
+      value: function () { return M.coffee.name; }, note: function () { return 'whole bean'; } }
+  ];
+
+  function renderInspect() {
+    var host = $('inspectList');
+    host.innerHTML = '';
+    INSPECTIONS.forEach(function (ins) {
+      if (inspected[ins.id]) {
+        var d = document.createElement('div');
+        d.className = 'found';
+        d.innerHTML = '<span>' + ins.label.replace(/^(Read|Look in|Check) /, '') +
+          '</span><b>' + ins.value() + '</b>';
+        var n = document.createElement('div');
+        n.className = 'hint';
+        n.style.cssText = 'margin-top:-2px;margin-bottom:2px';
+        n.textContent = ins.note();
+        host.appendChild(d);
+        host.appendChild(n);
+      } else {
+        var b = document.createElement('button');
+        b.textContent = ins.label;
+        b.onclick = function () { inspected[ins.id] = true; renderInspect(); };
+        host.appendChild(b);
+      }
+    });
+  }
+
+  /* ----- the customer's check scale ----- */
+
+  function renderCheck() {
+    var rows = M.log.slice(-6);
+    var val = $('checkVal'), sub = $('checkSub'), hist = $('checkHist');
+    if (!rows.length) {
+      val.textContent = '—';
+      val.classList.remove('off');
+      sub.textContent = 'Run a bag and it lands here.';
+      hist.innerHTML = '';
+      return;
+    }
+    var last = rows[rows.length - 1];
+    var actual = Math.round(last.trueWeight);
+    val.textContent = actual;
+    var gap = actual - last.weight;
+    val.classList.toggle('off', Math.abs(actual - last.target) > last.target * 0.01);
+    sub.innerHTML = 'Machine reported <b>' + last.weight + ' g</b> for this bag' +
+      (Math.abs(gap) >= 2 ? ' — the scale does not agree.' : '.');
+    hist.innerHTML = rows.slice().reverse().map(function (r) {
+      return '<span>' + Math.round(r.trueWeight) + '</span>';
+    }).join('');
+  }
+
+  /* ----- the answer ----- */
+
+  function renderAnswer() {
+    var body = $('answerBody');
+    var head = '<div class="hint">The fault is hidden. Reveal it when you want to talk ' +
+      'it through, or leave it closed while the trainee works.</div>';
+    var buttons = '<div class="btn-row" style="margin-top:8px">' +
+      '<button class="mini" id="revealBtn">' + (revealed ? 'Hide the fault' : 'Reveal the fault') + '</button>' +
+      '<button class="mini" id="newFaultBtn">Another fault</button>' +
+      '<button class="mini" id="endCallBtn">End call</button></div>';
+
+    var answer = '';
+    if (revealed && activeFault) {
+      answer = '<div class="answer">' +
+        '<h4>' + activeFault.name + '</h4>' +
+        '<div class="lab">What gives it away</div><p>' + activeFault.tell + '</p>' +
+        '<div class="lab">Cause</div><p>' + activeFault.cause + '</p>' +
+        '<div class="lab">Fix</div><p>' + activeFault.fix + '</p></div>';
+    }
+    body.innerHTML = (revealed ? '' : head) + buttons + answer;
+
+    $('revealBtn').onclick = function () { revealed = !revealed; renderAnswer(); };
+    $('newFaultBtn').onclick = startFaultCall;
+    $('endCallBtn').onclick = endFaultCall;
+  }
+
+  /* ---------------- practice exercises ---------------- */
 
   var TASKS = {
+    fault: function () { startFaultCall(); return null; },
+
     tune: function () {
+      clearFaultState();
+      app.classList.remove('fault');
+      activeFault = null;
       var r = M.recipes[5];              // Rec 6
       r.enabled = true;
       r.name = '250g';
@@ -67,10 +229,6 @@
       r.slow = 25;                       // deliberately too high
       r.dischargeZero = 30;
       M.sel = 6;
-      M.log.length = 0;
-      M.mass = 0; M.transit.length = 0;
-      M.pressure = 0.40; airSlider.value = 0.40;
-      M.hopper = M.hopperCap; hopSlider.value = M.hopperCap;
       return '<b>Tune Rec 6 (250 g).</b> Med is 350 and Slow is 25 — both far too high. ' +
         'Open Shortcut. Get <b>consistency</b> first: run 3 bags, drop Med by 10 until the ' +
         'weights stop agreeing, then put the last 10 back. Then get <b>accuracy</b>: if you are ' +
@@ -78,11 +236,12 @@
     },
 
     calibrate: function () {
+      clearFaultState();
+      app.classList.remove('fault');
+      activeFault = null;
       M.rawPerGram = 1.0 + (M.rnd() * 0.06 - 0.03);   // up to 3% span error
       M.rawOffset = (M.rnd() * 30 - 15);
-      M.mass = 0; M.transit.length = 0;
       M.hopper = 0; hopSlider.value = 0;
-      M.log.length = 0;
       M.clbWt = 0; M.recordedRaw = null;
       return '<b>The scale is out.</b> Hopper is empty and the chamber is clear. ' +
         'Load a known charge with the button below, then System Settings (password 0) ' +
@@ -90,26 +249,9 @@
         'charge into the chamber, <b>Record Wt</b>, type the true weight into <b>Clb Wt</b>, then <b>Wt Clb</b>.';
     },
 
-    fault: function () {
-      var which = Math.floor(M.rnd() * 4);
-      M.rawPerGram = 1; M.rawOffset = 0;
-      M.pressure = 0.40; airSlider.value = 0.40;
-      M.hopper = M.hopperCap; hopSlider.value = M.hopperCap;
-      M.sel = 5;
-      M.recipes[4] = PFSim.makeRecipe(5, '500g', 500, 500, 130, 9, 30);
-      M.log.length = 0;
-      M.mass = 0; M.transit.length = 0;
-      M.accNums = 0; M.accWt = 0; M.complete = 0; M.batchSet = 0;
-      if (which === 0) { M.pressure = 0.17; airSlider.value = 0.17; }
-      else if (which === 1) { M.rawPerGram = 1.045; }
-      else if (which === 2) { M.recipes[4].med = 45; }
-      else { M.hopper = 600; hopSlider.value = 600; }
-      return '<b>Something is wrong with this machine.</b> Recipe 5 (500 g) was signed off last week. ' +
-        'Run a dozen bags, read the numbers, and work out what changed. ' +
-        'The check-scale column in the log is the one the machine cannot see.';
-    },
-
     reset: function () {
+      app.classList.remove('fault');
+      activeFault = null;
       M.reset();
       hopSlider.value = M.hopper;
       airSlider.value = M.pressure;
@@ -123,18 +265,19 @@
       var msg = TASKS[b.getAttribute('data-task')]();
       M.stop();
       M.alarm = null; M.ouLamp = false;
-      var hint = $('taskHint');
-      hint.innerHTML = msg;
-      if (b.getAttribute('data-task') === 'calibrate') addChargeControl(hint);
+      if (msg !== null) $('taskHint').innerHTML = msg;
+      if (b.getAttribute('data-task') === 'calibrate') addChargeControl($('taskHint'));
       window.PFUI.render();
-      renderLog(); drawChart();
+      renderLog(); drawChart(); renderStats();
     };
   });
 
   // Only useful during the calibration exercise: a charge of exactly known mass,
   // standing in for weighing 2000 g into a bucket on a bench scale.
   function addChargeControl(host) {
+    if (document.getElementById('chargeRow')) return;
     var row = document.createElement('div');
+    row.id = 'chargeRow';
     row.className = 'btn-row';
     row.style.marginTop = '8px';
     var inp = document.createElement('input');
@@ -170,7 +313,8 @@
   document.addEventListener('keydown', function (e) {
     if (e.shiftKey && (e.key === 'I' || e.key === 'i')) {
       e.preventDefault();
-      setExam(!app.classList.contains('exam'));
+      if (app.classList.contains('fault')) { revealed = !revealed; renderAnswer(); }
+      else setExam(!app.classList.contains('exam'));
     }
   });
 
@@ -389,10 +533,11 @@
       renderStats();
       drawChart();
       renderLog();
+      renderCheck();
       window.PFUI.render();
     }
   }
 
-  renderStats(); drawChart(); renderLog();
+  renderStats(); drawChart(); renderLog(); renderCheck();
   window.PFRig = { tick: tick, drawChart: drawChart };
 })();

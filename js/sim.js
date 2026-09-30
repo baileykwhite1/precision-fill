@@ -14,9 +14,18 @@
     medOpenFrac: 0.55,    // gate opening fraction for Med; flow goes as opening^1.5
     vibRate: 38,          // g/s, vibrating plate (Slow)
     transitTime: 0.12,    // s, gate -> chamber fall time
+    vibTransit: 0.09,     // s, the plate meters right at the chamber mouth
+    // How regular each stream is, as a Fano factor (variance / mean bean count).
+    // The gate releases a chaotic avalanche that arrives in clumps, so it is
+    // worse than Poisson. The vibrating plate meters a thin, near-ordered
+    // monolayer, so it is far better than Poisson — which is exactly why a
+    // well-tuned machine repeats the same number and a gate-dominated fill
+    // scatters. This single contrast is what makes Med govern consistency.
+    fanoGate: 1.8,
+    fanoVib: 0.20,
     tauGate: 0.06,        // s, gate opening time constant
     tauGateClose: 0.28,   // s, closing is slower — the blade shears the bean column
-    tauVib: 0.10,         // s, vibrator spin-up / coast-down
+    tauVib: 0.125,        // s, vibrator spin-up / coast-down (the plate keeps shedding)
     sampleTime: 0.02,     // s, controller sample interval
     beanMass: 0.13,       // g, one bean — the source of scatter
     clumpSd: 0.085,       // bulk-solids flow is lumpy: rms fractional flow wobble
@@ -270,6 +279,23 @@
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   };
 
+  // Mass actually delivered by one stream over dt. `fano` is the ratio of
+  // variance to mean in the bean count: 1 is Poisson, above 1 is a clumpy
+  // avalanche, below 1 is a regularly metered stream.
+  Machine.prototype.drawStream = function (flow, dt, bean, fano) {
+    if (flow <= 0) return 0;
+    var lam = (flow * dt) / bean;
+    if (lam <= 0) return 0;
+    var n;
+    if (lam > 20) {
+      n = lam + Math.sqrt(fano * lam) * this.normal();
+    } else {
+      // scale the spread of a Poisson draw about its mean to hit the Fano factor
+      n = lam + (this.poisson(lam) - lam) * Math.sqrt(fano);
+    }
+    return n > 0 ? n * bean : 0;
+  };
+
   // Poisson-ish bean count; normal approximation above ~20 expected beans.
   Machine.prototype.poisson = function (lam) {
     if (lam <= 0) return 0;
@@ -340,15 +366,23 @@
     gateFlow *= clamp(1 + this.clump, 0, 2);
     vibFlow *= clamp(1 + this.clump * K.vibClump, 0, 2);
 
-    var flow = gateFlow + vibFlow;
-    if (flow > 0 && this.hopper > 0) {
-      var want = flow * dt;
+    // The two streams are drawn separately: they have different statistics and
+    // different fall times, and it is the difference between them that decides
+    // whether a fill repeats or scatters.
+    if (this.hopper > 0) {
       var bean = Math.max(0.004, cf.bean);
-      var lam = want / bean;
-      var got = this.poisson(lam) * bean;      // discrete beans -> real scatter
-      got = Math.min(got, this.hopper);
-      this.hopper -= got;
-      if (got > 0) this.transit.push({ due: this.t + K.transitTime, m: got });
+      var fromGate = this.drawStream(gateFlow, dt, bean, K.fanoGate);
+      var fromVib = this.drawStream(vibFlow, dt, bean, K.fanoVib);
+
+      var total = fromGate + fromVib;
+      if (total > this.hopper) {        // share out what is actually left
+        var scale = this.hopper / total;
+        fromGate *= scale; fromVib *= scale;
+        total = this.hopper;
+      }
+      this.hopper -= total;
+      if (fromGate > 0) this.transit.push({ due: this.t + K.transitTime, m: fromGate });
+      if (fromVib > 0) this.transit.push({ due: this.t + K.vibTransit, m: fromVib });
     }
 
     // in-flight arrivals

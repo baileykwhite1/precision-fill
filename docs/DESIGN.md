@@ -183,17 +183,57 @@ the manual's own screenshots — in particular Rec 5 (500 g) tuning out at
 | `tauVib` | 0.10 s | Vibrator spin-up / coast-down |
 | `sampleTime` | 0.02 s | Controller sample interval — adds cutoff latency ∝ rate |
 | `beanMass` | 0.13 g | One bean; the source of discreteness and therefore of scatter |
+| `fanoGate` | 1.8 | Gate stream regularity (variance / mean bean count) — worse than random |
+| `fanoVib` | 0.20 | Plate stream regularity — far better than random |
+| `vibTransit` | 0.09 s | The plate meters at the chamber mouth, a shorter drop than the gate |
 | `capacity` | 2500 g | Weighing chamber |
 
-Flow leaves the gate into a transport pipeline and arrives `transitTime` later.
-Mass per tick is converted to an expected bean count and drawn from a Poisson
-distribution, so the scatter in any in-flight lump is `beanMass · √count` — small
-at 38 g/s, large at 480 g/s. That single mechanism is what makes Med govern
-consistency and Slow govern accuracy, without either being special-cased.
+Flow leaves each feeder into a transport pipeline and arrives a fall time later.
+Mass per tick is converted to an expected bean count and drawn with a given
+**Fano factor** — the ratio of variance to mean in that count. Fano 1 is Poisson;
+above 1 is clumpy; below 1 is a regularly metered stream.
 
-Sanity check on the 500 g recipe at Med 130 / Slow 9: the slow-phase overshoot is
-`38 · (0.02 sample + 0.12 transit + 0.10 decay) ≈ 9.1 g`, so a Slow value of 9
-lands on target — matching the real machine's tuned value.
+The two feeders are drawn **separately, with opposite statistics**, and this is
+the heart of the model:
+
+- The **gate** releases an avalanche. Bulk solids discharging through an orifice
+  arrive in surges, not as independent grains, so its count is *worse* than
+  random (`fanoGate` 1.8). A lump of gate in-flight is both large and variable.
+- The **vibrating plate** meters a thin, near-ordered monolayer off a tray. That
+  is a far more regular process than random arrival (`fanoVib` 0.20), so its
+  in-flight lump is both small and repeatable.
+
+Everything the operator feels follows from that contrast. When Med is high enough
+that the slow phase makes the final approach, the last thing to land is a small,
+regular lump, and the machine returns **the same number every bag**. As Med comes
+down, the gate's cutoff moves closer to target until its avalanche starts landing
+after the slow cutoff, uncorrected — and an avalanche is exactly the thing that
+does not repeat, so the fills go **erratic** before they go merely heavy. Lower
+still and the slow phase is bypassed entirely: the scatter then saturates (it is
+one avalanche's worth either way) while the mean runs away, which is the
+"significantly more coffee than the target" the manual warns about for Fast.
+
+Measured across the range an operator actually tunes in, at target 500 g:
+
+| Med | 130 | 110 | 90 | 70 | 50 |
+|---|---|---|---|---|---|
+| spread (sd) | 0.7 g | 1.2 g | 4.1 g | 6.3 g | 5.7 g |
+| range over 16 bags | 2 g | 5 g | 15 g | 23 g | 20 g |
+| mean error | +0.2 | +0.9 | +5.5 | +14.8 | +28.6 |
+
+Slow, by contrast, moves the mean about one gram per gram and leaves the spread
+alone (sd 0.5–0.9 across Slow 4 to 16) — accuracy without touching consistency,
+which is why the manual tunes it second and in single grams.
+
+`test/tuning.js` asserts all of this, so a later change to the physics cannot
+quietly break the feel of the tuning procedure.
+
+Sanity check on the 500 g recipe: the slow-phase overshoot is
+`38 · (0.02 sample + 0.09 transit + 0.125 decay) ≈ 8.9 g`, so Slow lands between
+8 and 9 — which is what the real machine tunes to. Walking the manual's whole
+procedure on the emulator (drop Med by 10 until consistency is lost, back off 10,
+then trim Slow by the deviation) converges on Med 140 / Slow 8 and finishes on
+500 / 500 / 500.
 
 Coffee presets scale the flow rate, the bean mass and the surging: medium roast
 is the baseline; dark roast flows a little slower on a bigger, more brittle bean;

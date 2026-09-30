@@ -23,9 +23,12 @@ The two things that actually go wrong on a Precision Fill are **calibration** an
 of coffee and a customer's afternoon. Here you can get them wrong for free.
 
 - **Tune a recipe** the way the manual prescribes — consistency with Med Feed
-  first, then accuracy with Slow Feed — and watch the spread on the chart tighten.
-  Set Med too low and you get the manual's 496 / 482 / 508 scatter, for the real
-  reason: the gate's in-flight coffee lands with no time left to correct it.
+  first, then accuracy with Slow Feed — and watch the spread on the chart tighten
+  until the machine returns the same number every bag. Bring Med down and it goes
+  progressively erratic, for the real reason: the gate discharges an avalanche,
+  and once that avalanche lands after the slow cutoff there is nothing left to
+  correct it. Walking the manual's procedure on the emulator converges on
+  Med 140 / Slow 8 and finishes on 500 / 500 / 500.
 - **Calibrate the scale** through the real 1.2 Material Clb procedure, including
   the failure mode where you type the wrong number into `Clb Wt` and every fill
   afterwards is quietly 3% light. The fill log carries a check-scale column the
@@ -84,6 +87,7 @@ js/sim.js         machine model — physics + controller state machine, no DOM
 js/ui.js          screens, popups, keypads, render loop
 js/rig.js         hopper/air/product controls, statistics, run chart, fill log
 test/functions.js headless functional suite over the model
+test/tuning.js    asserts the feel of the tuning procedure
 docs/DESIGN.md    the machine model, and what is documented vs inferred
 ```
 
@@ -93,6 +97,8 @@ tested without a browser:
 ```bash
 node test/functions.js     # 36 checks over the cycle, alarms, batch, calibration,
                            # feed modes, scale settings, manual override and AI Pack
+node test/tuning.js        # 19 checks that Med still governs consistency and Slow
+                           # still governs accuracy, with the right feel
 ```
 
 ```js

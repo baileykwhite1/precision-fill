@@ -71,12 +71,18 @@
       id: 'hopper-low',
       name: 'Hopper nearly empty',
       setup: function (m) { m.hopper = 550; },
-      complaint: 'The machine has started running light and then stops with an alarm ' +
-        'partway through a batch.',
-      tell: 'Fills drift under, the cycle drags, and it eventually alarms. The simplest ' +
-        'check on the list, and the one people skip.',
-      cause: 'There is almost nothing left in the hopper. Head pressure falls away as it ' +
-        'empties, so flow drops and the fill cannot make target.',
+      complaint: 'The machine has gone really slow. A bag that used to take about ' +
+        'seven seconds is crawling, and after half a minute or so it gives up and ' +
+        'alarms partway through the batch.',
+      tell: 'The weight creeps rather than climbs — five or six times slower than ' +
+        'normal — and it gives up around half a minute in. A fill that slow is a ' +
+        'supply problem, not a setting. The simplest check on the list, and the one ' +
+        'people skip.',
+      cause: 'There is almost nothing left in the hopper. Discharge barely depends on ' +
+        'how full a hopper is while there is a proper bed above the outlet, but once ' +
+        'the level drops toward it the flow channel collapses — so the last few ' +
+        'hundred grams trickle out at a fraction of the normal rate and the fill ' +
+        'cannot make target.',
       fix: 'Refill the hopper. Worth telling the roastery to keep it topped up rather ' +
         'than running it down, because the last few kilos fill differently.'
     },

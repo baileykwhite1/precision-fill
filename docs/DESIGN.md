@@ -235,6 +235,28 @@ procedure on the emulator (drop Med by 10 until consistency is lost, back off 10
 then trim Slow by the deviation) converges on Med 140 / Slow 8 and finishes on
 500 / 500 / 500.
 
+### Running the hopper out
+
+Discharge through an orifice barely depends on how full the hopper is — a deep
+bed and a shallow one feed at much the same rate, which is why a roastery never
+notices the level until it matters. It is only when the level drops toward the
+outlet that the flow channel collapses, and then the rate falls away steeply:
+full rate above 1.5 kg, about a third of it at 1 kg, and a fraction of it below
+that. The last of the bed still slides down the walls at a steady trickle, so it
+does empty rather than asymptoting towards never.
+
+The result is the symptom operators actually report: the machine does not stop,
+it **crawls**. From the 550 g the training fault ships with, the weight creeps up
+at roughly 39 g every five seconds — against a healthy fill that finishes in
+under seven seconds — it manages one underweight bag, and the hopper is empty
+about 27 seconds in, ending on `Hopper empty` rather than a generic feed timeout.
+The feed timeout sits at 45 s so the informative alarm is the one that fires.
+
+This is also why the calibration exercise takes a moment: moving a 2000 g charge
+into the chamber with Fast open runs about 12 seconds, since the last of it comes
+through slowly. That matches the manual's instruction to press Fast and *wait for
+all of the coffee to enter the weighing chamber*.
+
 Coffee presets scale the flow rate, the bean mass and the surging: medium roast
 is the baseline; dark roast flows a little slower on a bigger, more brittle bean;
 light roast and decaf are denser; peaberry is small, round and free-running; an

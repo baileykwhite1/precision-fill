@@ -34,6 +34,10 @@
     gateJitter: 0.12,     // shot-to-shot spread in pneumatic gate travel time
     dischargeRate: 900,   // g/s out of the chamber
     nomPressure: 0.40,    // MPa
+    hopperKnee: 1500,     // g; above this the outlet runs at full rate
+    hopperFalloff: 2.5,   // how steeply flow collapses as the bed runs out
+    hopperTrickle: 0.21,  // the shallow-bed floor: the last of it clears in ~30 s
+    feedTimeout: 45,      // s in FEED before calling it a no-flow fault
     cellNoise: 0.18,      // g rms, load cell noise at rest
     displayTau: 0.010,    // s, readout settling — near-live, so the count does not trail
     stabBand: 0.8,        // g, reading must sit inside this band to read stable
@@ -266,10 +270,18 @@
     return clamp((0.30 - this.pressure) / 0.30, 0, 1);
   };
 
+  // Discharge through an orifice barely depends on head while there is a proper
+  // bed sitting above the outlet. It is only once the level drops toward the
+  // outlet that the flow channel collapses and the rate falls away steeply — so
+  // the last few hundred grams take far longer to clear than their mass
+  // suggests, and the machine crawls rather than stopping cleanly.
   Machine.prototype.hopperFactor = function () {
     if (this.hopper <= 0) return 0;
-    if (this.hopper < 800) return 0.35 + 0.65 * (this.hopper / 800); // head pressure falls off
-    return 1;
+    var k = this.hopper / K.hopperKnee;
+    if (k >= 1) return 1;
+    // ...but a shallow bed still slides down the walls at a steady trickle, so
+    // it does empty in the end rather than asymptoting towards never.
+    return Math.max(Math.pow(k, K.hopperFalloff), K.hopperTrickle);
   };
 
   /* ----- random draws ----- */
@@ -589,7 +601,7 @@
           if (!d.fast && !d.med && !d.slow) this.setState('STAB');
         }
         // feed timeout — no flow
-        if (this.phaseT > 30) {
+        if (this.phaseT > K.feedTimeout) {
           this.raise('NOFLOW', 'Feed timeout');
           this.fastOn = this.medOn = this.slowOn = false;
           this.running = false;

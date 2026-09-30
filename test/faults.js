@@ -148,7 +148,13 @@ byId('cal-heavy').setup(m);
 var settle = function (s) { for (var i = 0; i < Math.round(s / 0.02); i++) m.tick(0.02); };
 m.mass = 0; m.hopper = 2000; settle(1);
 m.zeroClb();
-m.manualMode = true; m.man.fast = true; settle(6); m.man.fast = false; settle(2);
+// the manual says to press Fast and wait for ALL of the charge to reach the
+// chamber, so wait on that rather than on a stopwatch
+m.manualMode = true; m.man.fast = true;
+var waited = 0;
+while (m.hopper > 0 && waited < 60) { m.tick(0.02); waited += 0.02; }
+m.man.fast = false; settle(2);
+console.log('       (the 2000 g charge took ' + waited.toFixed(0) + 's to transfer)');
 m.recordWt();
 m.clbWt = 2000;
 m.wtClb();

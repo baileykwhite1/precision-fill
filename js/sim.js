@@ -94,6 +94,12 @@
       n: n, name: name, enabled: true,
       target: target, fast: fast, med: med, slow: slow,
       dischargeZero: dz == null ? 30 : dz,
+      cmbTimes: 1,            // 4.2.6 weighments combined into one bag
+      // 4.2.7-9: after a feed engages, its cutoff comparison is held off this
+      // long so the impact of the first coffee landing cannot trip it early
+      fastDelay: 0.5,
+      medDelay: 0.5,
+      slowDelay: 1.4,
       aiPack: false,
       feedSpeed: 3,           // 3 = Three Speed, 2 = Med/Slow, 1 = Fast/Slow
       times: defaultTimes(),
@@ -204,6 +210,12 @@
     this.cycleStart = 0;
     this.sampleAcc = 0;
     this.ouLamp = false;
+    this.fastRunT = 0;
+    this.medRunT = 0;
+    this.slowRunT = 0;
+    this.cmbDone = 0;          // weighments discharged into the current bag
+    this.cmbWeight = 0;
+    this.cmbTrue = 0;
   };
 
   Machine.prototype.recipe = function () {
@@ -327,6 +339,23 @@
       fast: useFast && w < r.target - r.fast,
       med: useMed && w < r.target - r.med,
       slow: w < r.target - r.slow
+    };
+  };
+
+  // How long each feed has been running. Ticked every sub-step, not every
+  // controller sample, or the timers would run at a quarter speed.
+  Machine.prototype.trackFeeds = function (dt) {
+    this.fastRunT = this.fastOn ? this.fastRunT + dt : 0;
+    this.medRunT = this.medOn ? this.medRunT + dt : 0;
+    this.slowRunT = this.slowOn ? this.slowRunT + dt : 0;
+  };
+
+  // Which feeds are still inside their hold-off window and so cannot be cut yet.
+  Machine.prototype.feedHold = function (r) {
+    return {
+      fast: this.fastOn && this.fastRunT < (r.fastDelay || 0),
+      med: this.medOn && this.medRunT < (r.medDelay || 0),
+      slow: this.slowOn && this.slowRunT < (r.slowDelay || 0)
     };
   };
 
@@ -471,7 +500,10 @@
       this.state = 'STOP';
       this.running = false;
     }
-    if (this.state === 'ALARM_HOLD') this.state = 'WAIT_CLAMP';
+    if (this.state === 'ALARM_HOLD') {
+      if (this.cmbDone > 0) { this.discOn = true; this.setState('DISCHARGE'); }
+      else this.state = 'WAIT_CLAMP';
+    }
   };
 
   /* ----- controller ----- */
@@ -490,6 +522,7 @@
 
   Machine.prototype.stop = function () {
     this.running = false;
+    this.cmbDone = 0; this.cmbWeight = 0; this.cmbTrue = 0;
     this.setState('STOP');
     this.fastOn = this.medOn = this.slowOn = false;
     this.holdOn = false;
@@ -591,14 +624,22 @@
         }
         // controller samples at a fixed interval, which is itself a source of
         // cutoff latency proportional to flow rate
+        this.trackFeeds(dt);
         this.sampleAcc += dt;
         if (this.sampleAcc >= K.sampleTime) {
           this.sampleAcc = 0;
           var d = this.feedDemand(w);
-          this.fastOn = d.fast;
-          this.medOn = d.med;
-          this.slowOn = d.slow;
-          if (!d.fast && !d.med && !d.slow) this.setState('STAB');
+
+          // Each feed's cutoff comparison is held off for its delay after the
+          // feed engages (4.2.7-9). Coffee hitting an empty chamber kicks the
+          // load cell hard, and without the hold-off that spike can cut a feed
+          // before it has really started.
+          var held = this.feedHold(r);
+          this.fastOn = d.fast || held.fast;
+          this.medOn = d.med || held.med;
+          this.slowOn = d.slow || held.slow;
+
+          if (!this.fastOn && !this.medOn && !this.slowOn) this.setState('STAB');
         }
         // feed timeout — no flow
         if (this.phaseT > K.feedTimeout) {
@@ -639,7 +680,11 @@
               if (r.ou.pause) { this.setState('ALARM_HOLD'); break; }
             }
           }
-          this.setState('WAIT_CLAMP');
+          // Mid-combine the bag is already clamped on the outlet, so the
+          // remaining weighments drop straight in — the operator presses the
+          // pedal once per bag, not once per weighment.
+          if (this.cmbDone > 0) { this.discOn = true; this.setState('DISCHARGE'); }
+          else this.setState('WAIT_CLAMP');
         }
         break;
 
@@ -674,8 +719,20 @@
       case 'DISCH_DELAY':
         if (this.phaseT >= r.times.dischargeDelay) {
           this.discOn = false;
-          this.finishFill();
-          this.setState('UNCLAMP_DELAY');
+          this.cmbDone += 1;
+          this.cmbWeight += (this.lastFill || 0);
+          this.cmbTrue = (this.cmbTrue || 0) + (this.lastTrue || 0);
+          // Scale Cmb Times (4.2.6): a bag bigger than the weighing chamber is
+          // made of several weighments. The clamp stays shut and the machine
+          // goes back for the next one; the bag is not finished until they are
+          // all in, which is why the operator only presses the pedal once.
+          if (this.cmbDone < (r.cmbTimes || 1)) {
+            this.setState('FEED_DELAY');
+          } else {
+            this.finishFill(this.cmbWeight, this.cmbTrue);
+            this.cmbDone = 0; this.cmbWeight = 0; this.cmbTrue = 0;
+            this.setState('UNCLAMP_DELAY');
+          }
         }
         break;
 
@@ -707,19 +764,25 @@
     }
   };
 
-  Machine.prototype.finishFill = function () {
+  // `weight` / `trueWt` are supplied when several weighments were combined into
+  // one bag; otherwise the last weighment is the bag.
+  Machine.prototype.finishFill = function (weight, trueWt) {
     var r = this.recipe();
-    var wt = this.lastFill == null ? 0 : this.lastFill;
-    var tw = this.lastTrue == null ? wt : this.lastTrue;
+    var wt = weight != null ? weight : (this.lastFill == null ? 0 : this.lastFill);
+    var tw = trueWt != null ? trueWt : (this.lastTrue == null ? wt : this.lastTrue);
+    var cmb = r.cmbTimes || 1;
+    var bagTarget = r.target * cmb;
     this.accNums += 1;
     this.accWt += wt;
     this.complete += 1;
-    var dev = wt - r.target;
-    var inSpec = !r.ou.func || (dev <= r.ou.over && -dev <= r.ou.under);
+    var dev = wt - bagTarget;
+    // tolerance applies per weighment, so a combined bag gets the same latitude
+    // on each of the weighments that make it up
+    var inSpec = !r.ou.func || (dev <= r.ou.over * cmb && -dev <= r.ou.under * cmb);
     this.log.push({
       n: this.accNums,
       recipe: r.name || ('Rec ' + r.n),
-      target: r.target,
+      target: bagTarget,
       weight: wt,          // the machine's reading
       trueWeight: tw,      // actual mass, i.e. what a check scale shows
       calErr: tw - wt,

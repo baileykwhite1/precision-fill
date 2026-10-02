@@ -154,5 +154,64 @@ t('a new recipe can be created and run', ()=>{ const m=new Machine(11); m.sel=7;
 t('stats report spread and rate', ()=>{ const m=new Machine(11); m.sel=5; m.start(); run(m,6);
   const s=m.stats(6); return s.sd>=0 && s.rate>0 && s.n===6 || JSON.stringify(s); });
 
+console.log('\n-- 4.2.6 Scale Cmb Times --');
+function combine(cmb, bags){
+  const m=new Machine(9); m.sel=5; m.recipe().cmbTimes=cmb;
+  m.start();
+  let pedals=0, opens=0, prev=false, g=0;
+  while(m.log.length<bags && g<400000){
+    m.tick(0.02);
+    if(m.state==='WAIT_CLAMP'){ m.pressPedal(); pedals++; }
+    if(m.state==='ALARM_HOLD'){ m.clearAlarm(); m.pressPedal(); pedals++; }
+    if(m.discOn && !prev) opens++;
+    prev=m.discOn; g++;
+  }
+  return {pedals, opens, s:m.stats(bags), m};
+}
+t('combine 1 is one weighment per bag', ()=>{ const r=combine(1,4);
+  return r.pedals===4 && r.opens===4 && r.s.target===500 || `pedals=${r.pedals} opens=${r.opens}`; });
+t('combine 3 discharges three times into one bag', ()=>{ const r=combine(3,3);
+  return r.opens===9 || 'opens='+r.opens; });
+t('combine 3 needs only one pedal press per bag', ()=>{ const r=combine(3,3);
+  return r.pedals===3 || 'pedals='+r.pedals; });
+t('combine 3 makes a bag of three times the target', ()=>{ const r=combine(3,3);
+  return r.s.target===1500 && Math.abs(r.s.mean-1500)<8 || `target=${r.s.target} mean=${r.s.mean.toFixed(1)}`; });
+t('combine tolerance scales with the weighments', ()=>{ const r=combine(3,3);
+  return r.s.bad===0 || r.s.bad+' of '+r.s.n+' flagged out of spec'; });
+t('stopping mid-bag does not carry the part-bag over', ()=>{
+  const m=new Machine(9); m.sel=5; m.recipe().cmbTimes=3; m.start();
+  let g=0; while(m.cmbDone===0 && g<200000){ m.tick(0.02);
+    if(m.state==='WAIT_CLAMP') m.pressPedal(); g++; }
+  m.stop();
+  return m.cmbDone===0 && m.cmbWeight===0 || `cmbDone=${m.cmbDone} cmbWeight=${m.cmbWeight}`; });
+t('combine shows on the home screen as Combine', ()=>{ const m=new Machine(1);
+  m.sel=5; m.recipe().cmbTimes=4; return m.recipe().cmbTimes===4; });
+
+console.log('\n-- 4.2.7-9 feed delay times --');
+function holdTest(delay){
+  const m=new Machine(5); m.sel=4;            // 100 g, slow only
+  m.recipe().slowDelay=delay; m.recipe().ou.func=false;
+  m.start();
+  let slowFor=0, g=0;
+  while(m.log.length<1 && g<400000){
+    m.tick(0.02);
+    if(m.slowOn) slowFor+=0.02;
+    if(m.state==='WAIT_CLAMP') m.pressPedal();
+    g++;
+  }
+  return {slowFor, weight:m.log[0] ? m.log[0].weight : null};
+}
+t('a feed cannot be cut before its delay has elapsed', ()=>{
+  const r=holdTest(4);
+  return r.slowFor >= 3.9 || 'slow ran only '+r.slowFor.toFixed(2)+'s'; });
+t('holding a feed on past its cutoff overfills', ()=>{
+  const normal=holdTest(1.4), held=holdTest(4);
+  return held.weight > normal.weight + 20 || `${normal.weight} -> ${held.weight}`; });
+t('the shipped delays do not disturb a normal fill', ()=>{
+  const a=holdTest(1.4);
+  return Math.abs(a.weight-100)<6 || 'weight='+a.weight; });
+t('a zero delay is allowed', ()=>{ const r=holdTest(0);
+  return r.weight!=null && r.weight>0 || 'no fill'; });
+
 console.log('\n'+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);

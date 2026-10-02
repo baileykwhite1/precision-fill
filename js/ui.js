@@ -226,15 +226,24 @@
           { code: '4.1.3', label: 'Recipe\nName', type: 'text',
             get: function () { return R().name; }, set: function (v) { R().name = v; } }
         ] },
-        { code: '4.2', label: 'Target', single: true, rows: [
-          numRow('4.2.1', 'Target', 'g', function () { return R().target; }, function (v) { R().target = v; }, 0, 2500),
-          numRow('4.2.2', 'Fast Feed', 'g', function () { return R().fast; }, function (v) { R().fast = v; }, 0, 2500),
-          numRow('4.2.3', 'Med Feed', 'g', function () { return R().med; }, function (v) { R().med = v; }, 0, 2500),
-          numRow('4.2.4', 'Slow Feed', 'g', function () { return R().slow; }, function (v) { R().slow = v; }, 0, 2500),
-          numRow('4.2.5', 'Discharge\nZero Area', 'g', function () { return R().dischargeZero; }, function (v) { R().dischargeZero = v; }, 0, 500),
-          { code: '4.2.10', label: 'Feed Speed', type: 'enum',
-            get: function () { return FEED_SPEED[R().feedSpeed]; },
-            next: function () { var o = [3, 2, 1]; R().feedSpeed = o[(o.indexOf(R().feedSpeed) + 1) % 3]; } }
+        { code: '4.2', label: 'Target', cols: [
+          [
+            numRow('4.2.1', 'Target', 'g', function () { return R().target; }, function (v) { R().target = v; }, 0, 2500),
+            numRow('4.2.2', 'Fast Feed', 'g', function () { return R().fast; }, function (v) { R().fast = v; }, 0, 2500),
+            numRow('4.2.3', 'Med Feed', 'g', function () { return R().med; }, function (v) { R().med = v; }, 0, 2500),
+            numRow('4.2.4', 'Slow Feed', 'g', function () { return R().slow; }, function (v) { R().slow = v; }, 0, 2500),
+            numRow('4.2.5', 'Discharge\nZero Area', 'g', function () { return R().dischargeZero; }, function (v) { R().dischargeZero = v; }, 0, 500)
+          ],
+          [
+            numRow('4.2.6', 'Scale Cmb Times', '', function () { return R().cmbTimes; },
+              function (v) { R().cmbTimes = Math.max(1, v); }, 1, 20),
+            numRow('4.2.7', 'Fast Delay Time', 's', function () { return R().fastDelay; }, function (v) { R().fastDelay = v; }, 0, 20, 0.1),
+            numRow('4.2.8', 'Med Delay Time', 's', function () { return R().medDelay; }, function (v) { R().medDelay = v; }, 0, 20, 0.1),
+            numRow('4.2.9', 'Slow Delay Time', 's', function () { return R().slowDelay; }, function (v) { R().slowDelay = v; }, 0, 20, 0.1),
+            { code: '4.2.10', label: 'Feed Speed', type: 'enum',
+              get: function () { return FEED_SPEED[R().feedSpeed]; },
+              next: function () { var o = [3, 2, 1]; R().feedSpeed = o[(o.indexOf(R().feedSpeed) + 1) % 3]; } }
+          ]
         ] },
         { code: '4.3', label: 'Time Set', single: true, rows: [
           numRow('4.3.1', 'Feed Delay Time', 's', function () { return R().times.feedDelay; }, function (v) { R().times.feedDelay = v; }, 0, 20, 0.1),
@@ -650,7 +659,7 @@
     warnEl.classList.toggle('alarm', !!M.alarm);
     $('fAccN').textContent = M.accNums;
     $('fAccW').textContent = Math.round(M.accWt);
-    $('fComb').textContent = M.combine;
+    $('fComb').textContent = r.cmbTimes || 1;
     $('fMode').textContent = '②Hopper';
     document.querySelector('[data-act="clralarm"]').classList.toggle('alarmkey', !!M.alarm);
     $('fStart').textContent = M.running ? 'Stop' : 'Start';

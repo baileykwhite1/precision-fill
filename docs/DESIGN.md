@@ -136,6 +136,36 @@ implements it as a real two-point calibration you can get wrong:
 Enter the wrong number in step 4 and every fill afterwards is proportionally
 wrong, which is a failure mode worth being able to practise on.
 
+### The 4.2 Target screen
+
+Ten parameters in two columns. The left column is the feed setup; the right
+column is less obvious:
+
+| | | |
+|---|---|---|
+| 4.2.6 | Scale Cmb Times | Weighments combined into one bag |
+| 4.2.7 | Fast Delay Time | 0.5 s |
+| 4.2.8 | Med Delay Time | 0.5 s |
+| 4.2.9 | Slow Delay Time | 1.4 s |
+
+**Scale Cmb Times** is the Combine value shown on the home screen, and the manual
+explains what it is for: "if the target is 10 kg, but you're only filling 2.5 kg,
+your combine value would be 4". A bag larger than the 2500 g weighing chamber has
+to be made of several weighments. So with Combine at N the clamp stays shut and
+the machine goes straight back for the next weighment after each discharge; the
+bag is not finished, and the counters do not advance, until all N are in. The
+operator presses the pedal **once per bag**, not once per weighment, and the
+over/under tolerance is given per weighment.
+
+**The three delay times** are not documented anywhere in the manual, and they are
+the one part of this screen that is genuinely a guess — see the inferred list
+below. They are modelled as a per-feed cutoff hold-off: for that long after a
+feed engages, its cutoff comparison is suppressed. Coffee hitting an empty
+chamber kicks the load cell hard, and without a hold-off that spike can cut a
+feed before it has properly started. At the shipped values they change nothing,
+because every feed runs longer than its delay; wind one up and you can watch it
+hold a feed open past its cutoff and overfill.
+
 ### Alarms
 
 Over Tolerance, Under Tolerance, Batch Finished, `OFL` overload, low air
@@ -285,6 +315,12 @@ Called out so nobody mistakes the emulator for the spec:
   the fact that alarms are rendered red — the screenshots show no active alarm.
 - **The AI Pack trim rule.** The manual documents the toggle and its warning, not
   the algorithm; the ±3 g Slow trim is ours.
+- **What 4.2.7-9 Fast / Med / Slow Delay Time actually do.** The parameters and
+  their shipped values (0.5 / 0.5 / 1.4 s) are real — they are on the 4.2 screen
+  — but the manual never explains them, and they are not the cycle delays, which
+  live on 4.3 Time Set. The cutoff hold-off reading is a plausible guess at a
+  standard weighing-controller feature, chosen partly because it changes nothing
+  at the shipped values. Treat the behaviour as unverified.
 - **The training faults** in `js/faults.js`. The failure modes are real and the
   fixes follow the manual, but the customer complaints, the wording and the
   chosen severities are ours. `test/faults.js` checks that each one actually

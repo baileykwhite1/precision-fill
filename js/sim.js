@@ -523,16 +523,16 @@
 
   Machine.prototype.stop = function () {
     this.running = false;
+    this.fastOn = this.medOn = this.slowOn = false;
+    // Stopped mid-discharge, the bag keeps emptying until the chamber is
+    // empty; the sequence then unclamps and lands in STOP (END_UNCLAMP).
+    var DISCHARGING = { CLAMP_DELAY: 1, DISCHARGE: 1, DISCH_DELAY: 1, UNCLAMP_DELAY: 1, END_UNCLAMP: 1 };
+    if (DISCHARGING[this.state]) return;
     this.cmbDone = 0; this.cmbWeight = 0; this.cmbTrue = 0;
     this.setState('STOP');
-    this.fastOn = this.medOn = this.slowOn = false;
     this.holdOn = false;
-    // Stop shuts the discharge straight away, even mid-discharge or with the
-    // gate opened by hand; the bag stays clamped until the pedal releases it.
-    this.discOn = false; this.man.disc = false; this.discGate = 0;
-    this.mdState = null;
-    this.bagClamp = this.clampOn;
   };
+
 
   Machine.prototype.pressPedal = function () { this.pedal = true; };
 
@@ -745,7 +745,7 @@
           // made of several weighments. The clamp stays shut and the machine
           // goes back for the next one; the bag is not finished until they are
           // all in, which is why the operator only presses the pedal once.
-          if (this.cmbDone < (r.cmbTimes || 1)) {
+          if (this.cmbDone < (r.cmbTimes || 1) && this.running) {
             this.setState('FEED_DELAY');
           } else {
             this.finishFill(this.cmbWeight, this.cmbTrue);

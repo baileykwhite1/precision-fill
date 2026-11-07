@@ -48,7 +48,7 @@ of coffee and a customer's afternoon. Here you can get them wrong for free.
 | **Manual Override** | Fast / Med / Slow / Disc latches, Clamp as a foot-pedal signal, IO port runtime state |
 | **7 Acc Data** | Batch Set, accumulated totals, clear |
 | **Cycle timing** | All six Time Set delays drive the real sequence |
-| **Alarms** | Over/Under with pause, batch finished, `OFL` overload, low air, hopper empty — all shown in red, pulsing until acknowledged |
+| **Alarms** | Over/Under with pause, batch finished, `OFL` overload, low air, hopper empty — the warning text turns red until cleared |
 | **AI Pack** | Live, not a dead toggle: it applies the manual's accuracy rule automatically and rewrites Slow, which is why the manual says to note your values first |
 | **Rig** | Foot pedal (Space), hopper level, air pressure, six whole-bean products, run chart, fill log, CSV export |
 | **Service calls** | Six faults, a customer complaint, a check scale, and a hideable answer screen |

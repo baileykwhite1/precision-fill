@@ -198,6 +198,7 @@
     this.medOn = false;
     this.slowOn = false;
     this.clampOn = false;
+    this.bagClamp = false;    // clamp closed by the pedal outside a discharge
     this.discOn = false;
     this.holdOn = false;
 
@@ -597,6 +598,19 @@
       return;
     }
 
+    // The foot pedal works the bag clamp in any state. When the machine is
+    // waiting for a bag it is also the signal to discharge (WAIT_CLAMP below);
+    // mid-discharge it is ignored, and at any other time it opens or closes
+    // the clamp, so a bag clamped early goes straight in once the weight is ready.
+    var DISCHARGING = { CLAMP_DELAY: 1, DISCHARGE: 1, DISCH_DELAY: 1, UNCLAMP_DELAY: 1, END_UNCLAMP: 1 };
+    if (this.pedal && this.state !== 'WAIT_CLAMP') {
+      this.pedal = false;
+      if (!DISCHARGING[this.state] && !this.cmbDone) {
+        this.bagClamp = !this.bagClamp;
+        this.clampOn = this.bagClamp;
+      }
+    }
+
     switch (this.state) {
       case 'STOP':
         this.fastOn = this.medOn = this.slowOn = false;
@@ -689,14 +703,14 @@
         break;
 
       case 'ALARM_HOLD':
-        this.holdOn = true;
-        this.pedal = false;          // will not discharge until cleared
+        this.holdOn = true;          // will not discharge until cleared
         break;
 
       case 'WAIT_CLAMP':
         this.holdOn = true;
-        if (this.pedal) {
+        if (this.pedal || this.bagClamp) {
           this.pedal = false;
+          this.bagClamp = false;
           this.holdOn = false;
           this.setState('CLAMP_DELAY');
         }
@@ -739,6 +753,7 @@
       case 'UNCLAMP_DELAY':
         if (this.phaseT >= r.times.unclampDelay) {
           this.clampOn = false;
+          this.bagClamp = false;
           this.setState('END_UNCLAMP');
         }
         break;

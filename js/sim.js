@@ -527,6 +527,11 @@
     this.setState('STOP');
     this.fastOn = this.medOn = this.slowOn = false;
     this.holdOn = false;
+    // Stop shuts the discharge straight away, even mid-discharge or with the
+    // gate opened by hand; the bag stays clamped until the pedal releases it.
+    this.discOn = false; this.man.disc = false; this.discGate = 0;
+    this.mdState = null;
+    this.bagClamp = this.clampOn;
   };
 
   Machine.prototype.pressPedal = function () { this.pedal = true; };

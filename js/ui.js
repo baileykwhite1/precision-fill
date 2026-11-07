@@ -661,7 +661,6 @@
     $('fAccW').textContent = Math.round(M.accWt);
     $('fComb').textContent = r.cmbTimes || 1;
     $('fMode').textContent = '②Hopper';
-    document.querySelector('[data-act="clralarm"]').classList.toggle('alarmkey', !!M.alarm);
     $('fStart').textContent = M.running ? 'Stop' : 'Start';
     var sk = document.querySelector('[data-act="startstop"]');
     sk.classList.toggle('grey', !M.running);

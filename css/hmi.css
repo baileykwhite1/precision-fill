@@ -701,21 +701,10 @@ details.task ol { font-size: 11.5px; color: var(--rig-ink-2); line-height: 1.5; 
 }
 
 /* ---------------- alarms ----------------
-   An alarm is a fault, not a state, so it is red rather than green and it
-   pulses until acknowledged. */
+   On the real screen only the warning text turns red. Nothing flashes and
+   the Clr Alarm key looks the same as always. */
 
-@keyframes alarmPulse {
-  0%, 100% { background: #c62525; border-color: #ff8a8a; }
-  50%      { background: #8e1616; border-color: #d96a6a; }
-}
-
-.hfield.alarm {
-  background: #c62525;
-  border-color: #ff8a8a;
-  color: #fff;
-  animation: alarmPulse 1.1s ease-in-out infinite;
-}
-.hfield.alarm:hover { background: #d63535; }
+.hfield.alarm { color: #ff4d4d; }
 
 /* the O/U indicator on the LCD strip */
 .lamp-row span.alarm { color: #ffd9d9; }
@@ -724,19 +713,8 @@ details.task ol { font-size: 11.5px; color: var(--rig-ink-2); line-height: 1.5; 
   text-shadow: 0 0 .7cqw #ff2a2a;
 }
 
-/* Clr Alarm draws attention while something is latched */
-.fkey.alarmkey {
-  background: linear-gradient(#e85a5a, #c62525);
-  border-color: #ff9a9a;
-  color: #fff;
-  animation: alarmPulse 1.1s ease-in-out infinite;
-}
-
 .bezel-top .alarm, #bezelState.alarm { color: #ff7b7b; }
 
-@media (prefers-reduced-motion: reduce) {
-  .hfield.alarm, .fkey.alarmkey { animation: none; }
-}
 
 /* ---------------- exam mode ----------------
    Hides the instructor panel so a trainee sees only the machine. The foot pedal

@@ -10,9 +10,9 @@
   /* ---------- constants (see DESIGN.md § Physics) ---------- */
 
   var K = {
-    maxGateRate: 800,     // g/s, gate fully open (Fast): about 2000 g in 2-3 s, per SOVDA's field techs
-    medOpenFrac: 0.65,    // gate opening fraction for Med; flow goes as opening^1.5 (about 420 g/s)
-    vibRate: 15,          // g/s, vibrating plate (Slow): a dribble, much slower than Med
+    maxGateRate: 1150,    // g/s, gate fully open (Fast): about 1 kg a second, per SOVDA's field techs
+    medOpenFrac: 0.55,    // gate opening fraction for Med; flow goes as opening^1.5 (about 470 g/s)
+    vibRate: 20,          // g/s, vibrating plate (Slow): a dribble, much slower than Med
     transitTime: 0.12,    // s, gate -> chamber fall time
     vibTransit: 0.09,     // s, the plate meters right at the chamber mouth
     // How regular each stream is, as a Fano factor (variance / mean bean count).
@@ -24,8 +24,8 @@
     fanoGate: 1.8,
     fanoVib: 0.20,
     tauGate: 0.06,        // s, gate opening time constant
-    tauGateClose: 0.12,   // s, closing is slower than opening — the blade shears the bean column
-    tauVib: 0.45,         // s, vibrator spin-up / coast-down (the plate keeps shedding after it stops)
+    tauGateClose: 0.06,   // s, closing is slower than opening — the blade shears the bean column
+    tauVib: 0.36,         // s, vibrator spin-up / coast-down (the plate keeps shedding after it stops)
     sampleTime: 0.02,     // s, controller sample interval
     beanMass: 0.13,       // g, one bean — the source of scatter
     clumpSd: 0.085,       // bulk-solids flow is lumpy: rms fractional flow wobble

@@ -166,6 +166,9 @@
     this.hopperCap = 25000;
     this.pressure = 0.40;      // MPa
     this.coffee = COFFEES[0];
+    // No two machines are quite alike: drop height, how fast the gate shuts and how long the plate coasts
+    // set how much coffee is still falling at each cut-off, so the best Med and Slow differ a little per machine.
+    this.unit_ = { drop: 1, gate: 1, coast: 1 };
 
     // filtered / displayed scale
     this.shown = 0;
@@ -274,7 +277,7 @@
   // `closing` picks the slower stroke. Low air makes the cylinder sluggish either
   // way, which widens the in-flight lump and is why the manual insists on 0.4 MPa.
   Machine.prototype.gateTau = function (closing) {
-    var base = closing ? K.tauGateClose : K.tauGate;
+    var base = (closing ? K.tauGateClose : K.tauGate) * (closing ? this.unit_.gate : 1);
     return base * this.gateTauMul / clamp(this.airFactor(), 0.25, 1.1);
   };
 
@@ -387,7 +390,7 @@
     var floor = this.leakFrac() * 0.085;
     var gWant = Math.max(gTarget * clamp(this.airFactor(), 0, 1), floor);
     this.gate = approach(this.gate, gWant, dt, this.gateTau(gWant < this.gate));
-    this.vib = approach(this.vib, slow ? 1 : 0, dt, K.tauVib);
+    this.vib = approach(this.vib, slow ? 1 : 0, dt, K.tauVib * this.unit_.coast);
     var dWant = this.discOn ? 1 : 0;
     this.discGate = approach(this.discGate, dWant, dt, this.gateTau(dWant < this.discGate));
 
@@ -423,7 +426,7 @@
         total = this.hopper;
       }
       this.hopper -= total;
-      if (fromGate > 0) this.transit.push({ due: this.t + K.transitTime, m: fromGate });
+      if (fromGate > 0) this.transit.push({ due: this.t + K.transitTime * this.unit_.drop, m: fromGate });
       if (fromVib > 0) this.transit.push({ due: this.t + K.vibTransit, m: fromVib });
     }
 

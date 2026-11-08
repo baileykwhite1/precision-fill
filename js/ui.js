@@ -582,7 +582,7 @@
   function calLcd() {
     var d = el('div', 'cal-lcd');
     d.id = 'calLcd';
-    var w = el('span'); w.id = 'calW'; w.textContent = '0';
+    var w = el('span'); w.id = 'calW'; w.textContent = M.display();   // the real weight, not 0, when the panel is redrawn
     d.appendChild(w);
     d.appendChild(el('span', 'u', 'g'));
     return d;
@@ -610,6 +610,7 @@
   /* ---------------- live render ---------------- */
 
   function render() {
+    lastW = null;   // anything rebuilt below gets the current weight on the next frame
     var r = M.recipe();
 
     // readout, on every screen that has one

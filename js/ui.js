@@ -761,7 +761,6 @@
       render();
     },
     discharge: function () {
-      if (M.running) { say('Stop the machine before using Discharge.'); return; }
       M.man.disc = !M.man.disc;
       say(M.man.disc ? 'Discharge gate open — press again to close.' : 'Discharge gate closed.');
       render();
@@ -771,8 +770,7 @@
       if (M.running) M.stop();
       else {
         if (M.alarm) { say('Clear the alarm first (Clr Alarm).'); return; }
-        M.man.disc = false;
-        M.start();
+        M.start();   // an open discharge gate stays open: coffee goes straight through
       }
       render();
     }

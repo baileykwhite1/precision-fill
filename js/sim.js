@@ -168,7 +168,7 @@
     this.coffee = COFFEES[0];
     // No two machines are quite alike: drop height, how fast the gate shuts and how long the plate coasts
     // set how much coffee is still falling at each cut-off, so the best Med and Slow differ a little per machine.
-    this.unit_ = { drop: 1, gate: 1, coast: 1 };
+    this.unit_ = { drop: 1, gate: 1, coast: 1, noise: 1 };   // noise: how lumpy the flow is (a well set-up machine is steadier)
 
     // filtered / displayed scale
     this.shown = 0;
@@ -379,7 +379,7 @@
     // it is the closing stroke that sets how much coffee escapes after cutoff
     if (gTarget !== this.prevGateCmd) {
       // under-pressured air makes the stroke erratic as well as slow
-      var jit = K.gateJitter * (1 + 3 * this.leakFrac());
+      var jit = K.gateJitter * (1 + 3 * this.leakFrac()) * this.unit_.noise;
       this.gateTauMul = 1 + this.normal() * jit;
       if (this.gateTauMul < 0.5) this.gateTauMul = 0.5;
       this.prevGateCmd = gTarget;
@@ -391,7 +391,8 @@
     var gWant = Math.max(gTarget * clamp(this.airFactor(), 0, 1), floor);
     this.gate = approach(this.gate, gWant, dt, this.gateTau(gWant < this.gate));
     this.vib = approach(this.vib, slow ? 1 : 0, dt, K.tauVib * this.unit_.coast);
-    var dWant = this.discOn ? 1 : 0;
+    // the Discharge key is a manual override: it holds the gate open whatever the controller is doing
+    var dWant = (this.discOn || this.man.disc) ? 1 : 0;
     this.discGate = approach(this.discGate, dWant, dt, this.gateTau(dWant < this.discGate));
 
     var hf = this.hopperFactor();
@@ -403,7 +404,7 @@
     // consistency and the vibrating plate (small lump) governs accuracy.
     var decay = Math.exp(-dt / K.clumpTau);
     this.clump = this.clump * decay +
-      this.normal() * K.clumpSd * (cf.clump || 1) * Math.sqrt(1 - decay * decay);
+      this.normal() * K.clumpSd * (cf.clump || 1) * this.unit_.noise * Math.sqrt(1 - decay * decay);
 
     // flow out of the hopper, orifice-like in gate opening
     var gateFlow = K.maxGateRate * Math.pow(clamp(this.gate, 0, 1), 1.5) * cf.rate * hf;
@@ -416,8 +417,8 @@
     // whether a fill repeats or scatters.
     if (this.hopper > 0) {
       var bean = Math.max(0.004, cf.bean);
-      var fromGate = this.drawStream(gateFlow, dt, bean, K.fanoGate);
-      var fromVib = this.drawStream(vibFlow, dt, bean, K.fanoVib);
+      var fromGate = this.drawStream(gateFlow, dt, bean, K.fanoGate * this.unit_.noise);
+      var fromVib = this.drawStream(vibFlow, dt, bean, K.fanoVib * this.unit_.noise);
 
       var total = fromGate + fromVib;
       if (total > this.hopper) {        // share out what is actually left

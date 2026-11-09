@@ -634,13 +634,7 @@
         break;
 
       case 'FEED': {
-        if (this.hopper <= 0) {
-          this.raise('HOPPER', 'Hopper empty');
-          this.fastOn = this.medOn = this.slowOn = false;
-          this.running = false;
-          this.setState('STOP');
-          break;
-        }
+        // No hopper sensor: with no coffee the feeds simply run dry until the feed timeout below.
         if (this.pressure < 0.20) {
           this.raise('AIR', 'Low air pressure');
         }

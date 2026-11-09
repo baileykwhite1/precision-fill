@@ -771,7 +771,6 @@
       if (M.running) M.stop();
       else {
         if (M.alarm) { say('Clear the alarm first (Clr Alarm).'); return; }
-        if (M.hopper <= 0) { say('Hopper is empty — refill before starting.'); return; }
         M.man.disc = false;
         M.start();
       }
